@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#080c18"><title>Crypto Bot V2</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#080c18;color:#f4f6fb;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.wrap{max-width:1100px;margin:auto;padding:18px 15px 45px}
+header{display:flex;justify-content:space-between;align-items:center}h1{margin:0;font-size:26px}.sub{color:#8c96aa;font-size:12px}.live{padding:8px 11px;border-radius:20px;background:#14251d;color:#72e19b;font-size:12px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:16px}.card,.panel{background:#101728;border:1px solid #1c2942;border-radius:17px;padding:15px}.label{color:#8c96aa;font-size:11px}.value{font-size:21px;font-weight:800;margin-top:6px}.green{color:#70e09c}.red{color:#ff7889}
+.controls{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}select,input,button{width:100%;padding:11px;border-radius:11px;border:1px solid #293754;background:#0b1120;color:#fff;font-size:14px}button{background:#315bea;border:0;font-weight:700}.secondary{background:#17233b}.panel{margin-top:12px}.signal{text-align:center;padding:13px;background:#0b1120;border-radius:13px;font-size:24px;font-weight:900;margin-top:10px}.muted{color:#8c96aa;font-size:12px}.tabs{display:flex;gap:8px;margin-top:12px}.tabs button{width:auto}.active{background:#315bea!important}.chart{height:360px;margin-top:10px}.row{display:flex;justify-content:space-between;border-bottom:1px solid #202d46;padding:10px 0}.warn{font-size:11px;color:#ffc86e;line-height:1.5}
+@media(max-width:700px){.grid{grid-template-columns:repeat(2,1fr)}.controls{grid-template-columns:repeat(2,1fr)}.chart{height:290px}}
+</style></head><body><div class="wrap">
+<header><div><h1>🤖 Crypto Bot V2</h1><div class="sub">Paper trading • données marché en direct</div></div><div class="live">● LIVE DATA</div></header>
+
+<div class="grid">
+<div class="card"><div class="label">BTC</div><div class="value" id="btc">—</div></div><div class="card"><div class="label">ETH</div><div class="value" id="eth">—</div></div>
+<div class="card"><div class="label">Portefeuille</div><div class="value" id="portfolio">1 000 €</div></div><div class="card"><div class="label">Performance</div><div class="value green" id="perf">0,00 %</div></div>
+</div>
+
+<div class="panel"><div class="controls">
+<div><div class="label">Marché</div><select id="symbol"><option value="BTCUSDT">BTC/USDT</option><option value="ETHUSDT">ETH/USDT</option></select></div>
+<div><div class="label">Unité</div><select id="interval"><option>1h</option><option>4h</option><option>1d</option></select></div>
+<div><div class="label">Risque / trade</div><select id="risk"><option value=".01">1 %</option><option value=".02" selected>2 %</option><option value=".03">3 %</option></select></div>
+<div><div class="label">Capital virtuel</div><input id="capitalInput" type="number" value="1000" min="100"></div>
+</div><button style="margin-top:10px" onclick="loadMarket()">🔄 Actualiser le marché</button></div>
+
+<div class="panel"><div class="label">DÉCISION DU BOT</div><div class="signal" id="signal">⚪ ANALYSE…</div><div class="muted" id="reason">Connexion aux données publiques…</div></div>
+
+<div class="tabs"><button class="active" onclick="tab('market',this)">📈 Marché</button><button class="secondary" onclick="tab('paper',this)">🤖 Paper Trading</button><button class="secondary" onclick="tab('stats',this)">📊 Stats</button></div>
+
+<section id="market" class="panel"><div class="label">PRIX + EMA 20 / EMA 50</div><div class="chart"><canvas id="chart"></canvas></div></section>
+
+<section id="paper" class="panel" style="display:none"><h3>🤖 Paper Trading</h3><div class="muted">Le bot peut simuler les décisions sans envoyer d'ordre réel.</div><div id="paperState" class="row"><span>État</span><b>En attente</b></div><button onclick="paperTrade()">▶️ Simuler la décision actuelle</button><div id="trades"></div></section>
+
+<section id="stats" class="panel" style="display:none"><h3>📊 Statistiques</h3><div class="grid"><div class="card"><div class="label">Trades simulés</div><div class="value" id="ntrades">0</div></div><div class="card"><div class="label">Gagnants</div><div class="value" id="wins">0</div></div><div class="card"><div class="label">Perdants</div><div class="value" id="losses">0</div></div><div class="card"><div class="label">Win rate</div><div class="value" id="winrate">—</div></div></div></section>
+<div class="panel warn">⚠️ V2 utilise des données publiques de marché pour l'affichage et l'analyse, mais reste en paper trading. Aucun compte, aucune clé API et aucun ordre réel. Les performances simulées ne prédisent pas les résultats futurs.</div>
+</div>
+<script>
+let chart, candles=[], currentPrice=0, currentSignal='WAIT', trades=[], cash=1000, position=null;
+const fmt=n=>n.toLocaleString('fr-FR',{maximumFractionDigits:2});
+async function ticker(sym){let r=await fetch('https://api.binance.com/api/v3/ticker/price?symbol='+sym);let j=await r.json();return +j.price}
+async function klines(sym,interval='1h',limit=200){let r=await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${interval}&limit=${limit}`);let a=await r.json();return a.map(x=>({t:x[0],o:+x[1],h:+x[2],l:+x[3],c:+x[4],v:+x[5]}))}
+function ema(arr,p){let k=2/(p+1),e=arr[0];return arr.map((x,i)=>i?x*k+e*(1-k):(e=x))}
+function rsi(arr,p=14){let g=0,l=0;for(let i=1;i<=p;i++){let d=arr[i]-arr[i-1];g+=Math.max(d,0);l+=Math.max(-d,0)}g/=p;l/=p;for(let i=p+1;i<arr.length;i++){let d=arr[i]-arr[i-1];g=(g*(p-1)+Math.max(d,0))/p;l=(l*(p-1)+Math.max(-d,0))/p}return l===0?100:100-100/(1+g/l)}
+function draw(a,e20,e50){let c=document.getElementById('chart');if(chart)chart.destroy();chart=new Chart(c,{type:'line',data:{labels:a.map(x=>new Date(x.t).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})),datasets:[{label:'Prix',data:a.map(x=>x.c),borderWidth:2,pointRadius:0,tension:.2},{label:'EMA20',data:e20,borderWidth:1,pointRadius:0},{label:'EMA50',data:e50,borderWidth:1,pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#dce2ed'}}},scales:{x:{display:false},y:{grid:{color:'#1d2940'},ticks:{color:'#8c96aa'}}}}})}
+async function loadMarket(){try{let sym=document.getElementById('symbol').value,int=document.getElementById('interval').value;let [bt,et,a]=await Promise.all([ticker('BTCUSDT'),ticker('ETHUSDT'),klines(sym,int)]);document.getElementById('btc').textContent='$'+fmt(bt);document.getElementById('eth').textContent='$'+fmt(et);candles=a;currentPrice=a[a.length-1].c;let closes=a.map(x=>x.c),e20=ema(closes,20),e50=ema(closes,50),R=rsi(closes);currentSignal=e20.at(-1)>e50.at(-1)&&R<68?'BUY':e20.at(-1)<e50.at(-1)||R>75?'SELL':'WAIT';let s=currentSignal==='BUY'?'🟢 ACHAT':currentSignal==='SELL'?'🔴 VENTE':'⚪ ATTENTE';document.getElementById('signal').textContent=s;document.getElementById('reason').textContent=`Prix ${fmt(currentPrice)} USDT · RSI ${R.toFixed(1)} · EMA20 ${fmt(e20.at(-1))} · EMA50 ${fmt(e50.at(-1))}`;draw(a,e20,e50)}catch(e){document.getElementById('signal').textContent='⚠️ DONNÉES INDISPONIBLES';document.getElementById('reason').textContent='Le navigateur ou le réseau bloque peut-être la source publique.'}}
+function paperTrade(){let initial=+document.getElementById('capitalInput').value||1000;if(cash===1000&&trades.length===0)cash=initial;if(currentSignal==='BUY'&&!position){let risk=+document.getElementById('risk').value;let stake=cash*risk/.03;stake=Math.min(stake,cash);position={entry:currentPrice,stake};cash-=stake;trades.push({type:'ACHAT',price:currentPrice,time:new Date()})}else if(currentSignal==='SELL'&&position){let value=position.stake*(currentPrice/position.entry);cash+=value;let pnl=value-position.stake;trades.push({type:'VENTE',price:currentPrice,pnl,time:new Date()});position=null}else{trades.push({type:'ATTENTE',price:currentPrice,time:new Date()})}renderTrades();updateStats()}
+function renderTrades(){document.getElementById('trades').innerHTML=trades.slice().reverse().map(t=>`<div class="row"><span>${t.type} · ${fmt(t.price)}</span><b>${t.pnl==null?'':(t.pnl>=0?'+':'')+fmt(t.pnl)+' USDT'}</b></div>`).join('')}
+function updateStats(){document.getElementById('ntrades').textContent=trades.length;let wins=trades.filter(x=>x.pnl>0).length,loss=trades.filter(x=>x.pnl<0).length;document.getElementById('wins').textContent=wins;document.getElementById('losses').textContent=loss;document.getElementById('winrate').textContent=(wins+loss?fmt(wins/(wins+loss)*100)+' %':'—');let val=cash+(position?position.stake*(currentPrice/position.entry):0);document.getElementById('portfolio').textContent=fmt(val)+' USDT';document.getElementById('perf').textContent=((val/(+document.getElementById('capitalInput').value||1000)-1)*100).toFixed(2).replace('.',',')+' %'}
+function tab(id,b){['market','paper','stats'].forEach(x=>document.getElementById(x).style.display=x===id?'block':'none');document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('active'));b.classList.add('active')}
+loadMarket();setInterval(loadMarket,60000);
+</script></body></html>
