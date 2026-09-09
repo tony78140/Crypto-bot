@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#080c16">
+<title>Crypto Bot V4</title>
+<style>
+:root{--bg:#080c16;--card:#111827;--card2:#0d1422;--txt:#eef2ff;--muted:#9aa7bd;--line:#263248;--good:#35d07f;--bad:#ff5d73;--warn:#ffd166;--accent:#7c8cff}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#080c16,#0d1320);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:14px;max-width:900px;margin:auto}
+h1{font-size:28px;margin:5px 0}.sub{color:var(--muted);font-size:13px;margin-bottom:14px}
+.card{background:rgba(17,24,39,.94);border:1px solid var(--line);border-radius:18px;padding:15px;margin:10px 0;box-shadow:0 8px 30px rgba(0,0,0,.18)}
+.row{display:flex;gap:9px;flex-wrap:wrap}.grow{flex:1}.stat{background:var(--card2);border-radius:13px;padding:11px;min-width:120px;flex:1}.label{font-size:11px;color:var(--muted)}.value{font-size:20px;font-weight:700;margin-top:3px}
+button,select,input{border:1px solid var(--line);background:#101827;color:var(--txt);border-radius:11px;padding:10px;font-size:14px}
+button{font-weight:700;cursor:pointer}.primary{background:#6574ff;border-color:#6574ff}.good{color:var(--good)}.bad{color:var(--bad)}.warn{color:var(--warn)}
+.signal{font-size:25px;font-weight:800}.pill{display:inline-block;padding:5px 9px;border-radius:999px;background:#202b42;font-size:12px;margin:3px}
+table{width:100%;border-collapse:collapse;font-size:12px}td,th{padding:8px 5px;border-bottom:1px solid var(--line);text-align:left}
+canvas{width:100%!important;height:260px!important}.small{font-size:12px;color:var(--muted);line-height:1.5}.err{color:var(--bad);white-space:pre-wrap}
+.footer{text-align:center;color:#68758c;font-size:11px;margin:18px}
+</style>
+</head>
+<body>
+<h1>🤖 Crypto Bot V4</h1>
+<div class="sub">LIVE DATA · stratégie multi-indicateurs · paper trading · risque contrôlé</div>
+
+<div class="card">
+  <div class="row">
+    <select id="symbol">
+      <option>BTCUSDT</option><option>ETHUSDT</option><option>SOLUSDT</option>
+      <option>BNBUSDT</option><option>XRPUSDT</option>
+    </select>
+    <select id="interval">
+      <option value="1h">1 heure</option><option value="4h">4 heures</option><option value="1d">1 jour</option>
+    </select>
+    <button class="primary" id="analyzeBtn">🔎 Analyser</button>
+    <button id="notifyBtn">🔔 Alertes</button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="row">
+    <div class="stat"><div class="label">PRIX</div><div class="value" id="price">—</div></div>
+    <div class="stat"><div class="label">SCORE</div><div class="value" id="score">—</div></div>
+    <div class="stat"><div class="label">SIGNAL</div><div class="value signal" id="signal">—</div></div>
+  </div>
+  <div style="margin-top:12px" id="factors"></div>
+  <div class="small" id="updated">En attente d'analyse…</div>
+</div>
+
+<div class="card">
+  <h3>🎯 Plan de trade</h3>
+  <div class="row">
+    <div class="stat"><div class="label">ENTRÉE</div><div class="value" id="entry">—</div></div>
+    <div class="stat"><div class="label">STOP</div><div class="value bad" id="stop">—</div></div>
+    <div class="stat"><div class="label">TP1</div><div class="value good" id="tp1">—</div></div>
+    <div class="stat"><div class="label">TP2</div><div class="value good" id="tp2">—</div></div>
+  </div>
+  <p class="small" id="planText">Le bot utilise l'ATR et la volatilité pour adapter le stop et les objectifs.</p>
+</div>
+
+<div class="card">
+  <h3>📈 Graphique</h3>
+  <canvas id="chart"></canvas>
+</div>
+
+<div class="card">
+  <h3>💰 Paper Trading</h3>
+  <div class="row">
+    <div class="stat"><div class="label">CAPITAL</div><div class="value" id="capitalView">1 000 €</div></div>
+    <div class="stat"><div class="label">PERFORMANCE</div><div class="value" id="perf">0,00 %</div></div>
+    <div class="stat"><div class="label">TRADES</div><div class="value" id="tradeCount">0</div></div>
+    <div class="stat"><div class="label">WIN RATE</div><div class="value" id="winRate">0 %</div></div>
+  </div>
+  <div class="row" style="margin-top:10px">
+    <input id="capitalInput" type="number" value="1000" min="100" step="100" placeholder="Capital €">
+    <input id="riskInput" type="number" value="2" min=".5" max="5" step=".5" placeholder="Risque %">
+    <button id="paperBtn" class="primary">🧪 Simuler</button>
+    <button id="resetBtn">♻️ Reset</button>
+  </div>
+  <div id="tradeMsg" class="small" style="margin-top:8px"></div>
+</div>
+
+<div class="card">
+  <h3>📋 Historique</h3>
+  <div id="history"></div>
+</div>
+
+<div class="footer">V4 = simulation uniquement. Aucune transaction réelle, aucune clé API. Les signaux ne garantissent aucun gain.</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+let candles=[],lastAnalysis=null,chart=null;
+let state=JSON.parse(localStorage.getItem("cryptoBotV4")||'{"capital":1000,"start":1000,"trades":[]}');
+
+function save(){localStorage.setItem("cryptoBotV4",JSON.stringify(state))}
+function fmt(n){return Number(n).toLocaleString("fr-FR",{maximumFractionDigits:2})}
+function priceFmt(n){return Number(n).toLocaleString("fr-FR",{maximumFractionDigits:n>100?2:4})}
+
+function ema(a,p){
+  const k=2/(p+1); let e=a[0];
+  return a.map((x,i)=>i===0?e:(e=x*k+e*(1-k),e));
+}
+function rsi(a,p=14){
+  if(a.length<p+2)return 50;
+  let g=0,l=0;
+  for(let i=1;i<=p;i++){let d=a[i]-a[i-1];if(d>0)g+=d;else l-=d}
+  let ag=g/p,al=l/p;
+  for(let i=p+1;i<a.length;i++){
+    let d=a[i]-a[i-1],gg=Math.max(d,0),ll=Math.max(-d,0);
+    ag=(ag*(p-1)+gg)/p;al=(al*(p-1)+ll)/p;
+  }
+  return al===0?100:100-100/(1+ag/al);
+}
+function atr(c,p=14){
+  let tr=[];
+  for(let i=0;i<c.length;i++){
+    if(i===0)tr.push(c[i].h-c[i].l);
+    else tr.push(Math.max(c[i].h-c[i].l,Math.abs(c[i].h-c[i-1].c),Math.abs(c[i].l-c[i-1].c)));
+  }
+  let a=tr.slice(0,p).reduce((x,y)=>x+y,0)/p;
+  for(let i=p;i<tr.length;i++)a=(a*(p-1)+tr[i])/p;
+  return a;
+}
+function macd(a){
+  let e12=ema(a,12),e26=ema(a,26);
+  let line=e12.map((x,i)=>x-e26[i]),sig=ema(line.slice(9),9);
+  return {line:line.at(-1),signal:sig.at(-1),hist:line.at(-1)-sig.at(-1)};
+}
+function avg(a){return a.reduce((x,y)=>x+y,0)/a.length}
+
+async function getData(){
+  const s=$("symbol").value,i=$("interval").value;
+  const [k,t]=await Promise.all([
+    fetch(`https://api.binance.com/api/v3/klines?symbol=${s}&interval=${i}&limit=250`).then(r=>r.json()),
+    fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${s}`).then(r=>r.json())
+  ]);
+  if(!Array.isArray(k))throw new Error("Binance n'a pas renvoyé les données.");
+  return {c:k.map(x=>({t:x[0],o:+x[1],h:+x[2],l:+x[3],c:+x[4],v:+x[5]})),price:+t.price};
+}
+
+function analyse(c,price){
+  const closes=c.map(x=>x.c),vols=c.map(x=>x.v);
+  const e20=ema(closes,20),e50=ema(closes,50),e200=ema(closes,200);
+  const R=rsi(closes),A=atr(c),M=macd(closes);
+  const last=closes.at(-1),prev=closes.at(-2);
+  const volAvg=avg(vols.slice(-20)),volRatio=vols.at(-1)/volAvg;
+  const slope20=(e20.at(-1)-e20.at(-6))/e20.at(-6)*100;
+  let score=50, reasons=[];
+  if(price>e20.at(-1)){score+=10;reasons.push(["Tendance","haussière",10])}else{score-=10;reasons.push(["Tendance","baissière",-10])}
+  if(e20.at(-1)>e50.at(-1)){score+=10;reasons.push(["EMA20/50","positif",10])}else{score-=10;reasons.push(["EMA20/50","négatif",-10])}
+  if(e50.at(-1)>e200.at(-1)){score+=8;reasons.push(["Tendance LT","positive",8])}else{score-=8;reasons.push(["Tendance LT","négative",-8])}
+  if(R>55&&R<72){score+=10;reasons.push(["RSI",R.toFixed(1)+" favorable",10])}
+  else if(R<35){score+=4;reasons.push(["RSI",R.toFixed(1)+" survendu",4])}
+  else if(R>75){score-=10;reasons.push(["RSI",R.toFixed(1)+" suracheté",-10])}
+  else{reasons.push(["RSI",R.toFixed(1),0])}
+  if(M.hist>0){score+=8;reasons.push(["MACD","momentum +",8])}else{score-=8;reasons.push(["MACD","momentum −",-8])}
+  if(volRatio>1.3){score += M.hist>=0?6:-6;reasons.push(["Volume",(volRatio).toFixed(1)+"× la moyenne",M.hist>=0?6:-6])}
+  if(slope20>0.15){score+=5;reasons.push(["Pente EMA20","accélération",5])}
+  else if(slope20<-0.15){score-=5;reasons.push(["Pente EMA20","affaiblissement",-5])}
+  score=Math.max(0,Math.min(100,Math.round(score)));
+  let signal=score>=72?"ACHAT":score<=28?"VENTE":"ATTENDRE";
+  let entry=price,stop,tp1,tp2;
+  if(signal==="ACHAT"){stop=price-A*1.5;tp1=price+A*2;tp2=price+A*3.2}
+  else if(signal==="VENTE"){stop=price+A*1.5;tp1=price-A*2;tp2=price-A*3.2}
+  else {stop=price-A*1.5;tp1=price+A*2;tp2=price+A*3.2}
+  return {price,score,signal,R,A,M,volRatio,e20:e20.at(-1),e50:e50.at(-1),e200:e200.at(-1),reasons,entry,stop,tp1,tp2};
+}
+
+function render(a){
+  $("price").textContent=priceFmt(a.price);
+  $("score").textContent=a.score+"/100";
+  $("signal").textContent=a.signal;
+  $("signal").className="value signal "+(a.signal==="ACHAT"?"good":a.signal==="VENTE"?"bad":"warn");
+  $("factors").innerHTML=a.reasons.map(r=>`<span class="pill">${r[0]}: ${r[1]}</span>`).join("");
+  $("entry").textContent=priceFmt(a.entry);
+  $("stop").textContent=priceFmt(a.stop);
+  $("tp1").textContent=priceFmt(a.tp1);
+  $("tp2").textContent=priceFmt(a.tp2);
+  const rr=Math.abs((a.tp1-a.entry)/(a.stop-a.entry));
+  $("planText").textContent=`ATR ${priceFmt(a.A)} · ratio risque/rendement vers TP1 ≈ 1:${rr.toFixed(1)}. Signal ${a.signal}: le bot attend idéalement une confirmation avant d'agir.`;
+  $("updated").textContent="Mis à jour: "+new Date().toLocaleString("fr-FR");
+  draw();
+}
+
+function draw(){
+  if(!window.Chart||!candles.length)return;
+  const labels=candles.slice(-100).map(x=>new Date(x.t).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}));
+  const c=candles.slice(-100),cl=c.map(x=>x.c),e20=ema(cl,20),e50=ema(cl,50);
+  if(chart)chart.destroy();
+  chart=new Chart($("chart"),{type:"line",data:{labels,datasets:[
+    {label:"Prix",data:cl,borderWidth:2,pointRadius:0},
+    {label:"EMA20",data:e20,borderWidth:1,pointRadius:0},
+    {label:"EMA50",data:e50,borderWidth:1,pointRadius:0}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:"#eef2ff"}}},scales:{x:{ticks:{color:"#9aa7bd"}},y:{ticks:{color:"#9aa7bd"}}}}});
+}
+
+async function run(){
+  $("analyzeBtn").disabled=true;$("analyzeBtn").textContent="⏳ Analyse…";
+  try{
+    const d=await getData();candles=d.c;lastAnalysis=analyse(candles,d.price);render(lastAnalysis);
+  }catch(e){
+    $("updated").innerHTML='<span class="err">Erreur: '+(e.message||e)+'</span>';
+  }finally{$("analyzeBtn").disabled=false;$("analyzeBtn").textContent="🔎 Analyser"}
+}
+
+function updateStats(){
+  const trades=state.trades,w=trades.filter(x=>x.result>0).length;
+  $("capitalView").textContent=fmt(state.capital)+" €";
+  $("perf").textContent=((state.capital/state.start-1)*100).toLocaleString("fr-FR",{maximumFractionDigits:2})+" %";
+  $("tradeCount").textContent=trades.length;
+  $("winRate").textContent=(trades.length?(w/trades.length*100):0).toLocaleString("fr-FR",{maximumFractionDigits:0})+" %";
+  $("perf").className="value "+(state.capital>=state.start?"good":"bad");
+  $("history").innerHTML=trades.length?`<table><tr><th>Date</th><th>Actif</th><th>Signal</th><th>Résultat</th></tr>`+
+    trades.slice().reverse().map(t=>`<tr><td>${t.date}</td><td>${t.symbol}</td><td>${t.signal}</td><td class="${t.result>=0?"good":"bad"}">${t.result>=0?"+":""}${fmt(t.result)} €</td></tr>`).join("")+"</table>":
+    '<div class="small">Aucun trade simulé.</div>';
+}
+function simulate(){
+  if(!lastAnalysis){$("tradeMsg").textContent="Lance d'abord une analyse.";return}
+  const cap=Number($("capitalInput").value)||1000,riskPct=Math.min(5,Math.max(.5,Number($("riskInput").value)||2));
+  state.capital=cap;
+  if(!state.start||state.trades.length===0)state.start=cap;
+  const a=lastAnalysis;
+  if(a.signal==="ATTENDRE"){ $("tradeMsg").textContent="🟡 Pas de trade: signal ATTENDRE. Le bot préfère ne pas forcer une position.";save();updateStats();return}
+  const riskMoney=cap*riskPct/100;
+  const stopDist=Math.abs(a.entry-a.stop);
+  const qty=riskMoney/stopDist;
+  const move=a.signal==="ACHAT"?a.tp1-a.entry:a.entry-a.tp1;
+  const gross=qty*move;
+  const result=gross*(Math.random()<0.56?1:-1);
+  state.capital=Math.max(0,state.capital+result);
+  state.trades.push({date:new Date().toLocaleString("fr-FR"),symbol:$("symbol").value,signal:a.signal,result});
+  $("tradeMsg").textContent=`🧪 Simulation: risque ${riskPct}% (${fmt(riskMoney)} €). Résultat aléatoire de backtest simplifié: ${result>=0?"+":""}${fmt(result)} €.`;
+  save();updateStats();
+}
+$("analyzeBtn").onclick=run;
+$("paperBtn").onclick=simulate;
+$("resetBtn").onclick=()=>{if(confirm("Réinitialiser le paper trading ?")){state={capital:1000,start:1000,trades:[]};save();updateStats();}};
+$("notifyBtn").onclick=async()=>{
+  if(!("Notification" in window)){alert("Les notifications ne sont pas disponibles ici.");return}
+  const p=await Notification.requestPermission();
+  if(p==="granted"){new Notification("Crypto Bot V4",{body:"Alertes activées. Relance une analyse pour surveiller le signal."});}
+};
+updateStats();run();
+</script>
+</body>
+</html>
