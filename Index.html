@@ -1,0 +1,806 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#080c16">
+<title>Crypto Bot V8.5 ADAPTIVE PRO — Paper Trading</title>
+<style>
+:root{--bg:#080c16;--card:#111827;--card2:#0d1422;--txt:#eef2ff;--muted:#9aa7bd;--line:#263248;--good:#35d07f;--bad:#ff5d73;--warn:#ffd166}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#080c16,#0d1320);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:14px;max-width:1000px;margin:auto}h1{font-size:29px;margin:5px 0}.sub{color:var(--muted);font-size:13px;margin-bottom:14px}.card{background:#111827;border:1px solid var(--line);border-radius:18px;padding:15px;margin:10px 0}.row{display:flex;gap:9px;flex-wrap:wrap}.stat{background:var(--card2);border-radius:13px;padding:11px;min-width:120px;flex:1}.label{font-size:11px;color:var(--muted)}.value{font-size:20px;font-weight:700;margin-top:3px}button,select,input{border:1px solid var(--line);background:#101827;color:var(--txt);border-radius:11px;padding:10px;font-size:14px}button{font-weight:700}.primary{background:#6574ff;border-color:#6574ff}.good{color:var(--good)}.bad{color:var(--bad)}.warn{color:var(--warn)}.small{font-size:12px;color:var(--muted);line-height:1.55}.pill{display:inline-block;padding:5px 9px;border-radius:999px;background:#202b42;font-size:12px;margin:3px}.bar{height:10px;background:#202b42;border-radius:10px;overflow:hidden;margin-top:7px}.bar i{display:block;height:100%;width:0;background:#6574ff}.err{color:var(--bad)}table{width:100%;border-collapse:collapse;font-size:12px}td,th{padding:7px 5px;border-bottom:1px solid var(--line);text-align:left}.big{font-size:30px;font-weight:850}.explain{background:#0d1422;border-radius:13px;padding:12px;font-size:13px;line-height:1.55}.top100-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line);font-size:10px;line-height:1.25}.top100-main{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.top100-meta{text-align:right;font-size:10px;white-space:nowrap}.top100-score{font-weight:700}.positions{display:grid;gap:9px;margin-top:10px}.position-card{background:#0d1422;border:1px solid var(--line);border-radius:13px;padding:11px}.position-head{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px}.position-title{font-size:14px;font-weight:800}.position-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.position-item{background:#101827;border-radius:9px;padding:7px}.position-label{font-size:9px;color:var(--muted);text-transform:uppercase}.position-value{font-size:12px;font-weight:700;margin-top:2px}@media(min-width:700px){.position-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+</style>
+
+<style id="v712-controls">
+.v712-controls{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}
+.v712-control{background:#0d1422;border:1px solid var(--line);border-radius:12px;padding:9px}
+.v712-control label{display:block;font-size:11px;color:var(--muted);margin-bottom:5px}
+.v712-control select{width:100%;background:#101827;color:inherit;border:1px solid var(--line);border-radius:8px;padding:8px;font-size:13px}
+</style>
+
+</head>
+<body>
+<h1>🤖 Crypto Bot V8.5 ADAPTIVE PRO</h1>
+<div class="sub">V8.5 ADAPTIVE PRO ENGINE · PAPER TRADING · AUTO · GESTION DU RISQUE</div>
+
+<div class="card">
+<div class="row">
+<select id="days"><option value="30">30 jours</option><option value="90" selected>90 jours</option><option value="180">180 jours</option></select>
+
+<div class="v712-controls">
+  <div class="v712-control">
+    <label>🕯️ Bougies utilisées</label>
+    <select id="candleInterval">
+      <option value="1m">1 minute</option>
+      <option value="3m">3 minutes</option>
+      <option value="5m" selected>5 minutes</option>
+      <option value="15m">15 minutes</option>
+      <option value="30m">30 minutes</option>
+      <option value="1h">1 heure</option>
+    </select>
+  </div>
+  <div class="v712-control">
+    <label>🔄 Intervalle d'analyse</label>
+    <select id="analysisInterval">
+      <option value="1">1 minute</option>
+      <option value="3">3 minutes</option>
+      <option value="5" selected>5 minutes</option>
+      <option value="10">10 minutes</option>
+      <option value="30">30 minutes</option>
+    </select>
+  </div>
+</div>
+
+<button class="primary" id="run">🧠 Analyser + tester TOP 100</button><button id="auto">▶️ Auto ON</button><button id="shortToggle">📉 SHORT ON</button><button id="reset">♻️ Reset portefeuille</button><select id="maxTrades"><option value="3">3 trades/h</option><option value="5">5 trades/h</option><option value="10" selected>10 trades/h</option></select>
+<select id="maxPositions"><option value="5">5 positions</option><option value="10">10 positions</option><option value="15">15 positions</option><option value="20" selected>20 positions</option></select>
+<div class="small" id="shortModeText" style="margin-top:7px">📉 SHORT activés · les signaux VENTE peuvent ouvrir des positions SHORT.</div>
+</div>
+<div class="small" style="margin-top:10px">V6 sépare l'optimisation et la validation : une partie des données sert à chercher les réglages, puis une partie jamais utilisée pour l'optimisation sert à les contrôler.</div>
+<div class="small" style="margin-top:6px">V8.5 ADAPTIVE PRO : validation renforcée en 3 niveaux · 🟢 FORT = position normale · 🟠 PRUDENT = petite position si signal ≥ 80 · 🔴 BLOQUÉ = aucun trade. Jusqu’à 20 positions simultanées.</div><div class="small" style="margin-top:6px">Exposition : max 5% du portefeuille par position en FORT · 3% en PRUDENT. Entrées uniquement sur bougies clôturées.</div>
+</div>
+
+<div class="card">
+<h3>🏆 Analyse des 100 principales cryptos</h3>
+<div class="small">Le bot analyse automatiquement les 100 principales paires USDT disponibles sur Binance, les teste et classe les signaux. Aucun ordre réel.</div>
+<div id="top100" style="margin-top:10px">Analyse prête.</div>
+</div>
+
+
+<div class="card" id="adaptivePanel">
+<h3>🧠 ADAPTIVE PRO</h3>
+<div class="small">Le bot apprend uniquement des trades PAPER clôturés. Il observe d'abord les résultats, puis ajuste très progressivement les situations déjà suffisamment observées. Aucun apprentissage ne modifie le marché ou ne passe d'ordre réel.</div>
+<div class="row" style="margin-top:9px">
+  <div class="stat"><div class="label">TRADES APPRIS</div><div class="value" id="adaptiveTrades">0 / 30</div></div>
+  <div class="stat"><div class="label">TAUX DE RÉUSSITE</div><div class="value" id="adaptiveWinRate">—</div></div>
+  <div class="stat"><div class="label">PATTERNS FIABLES</div><div class="value" id="adaptivePatterns">0</div></div>
+  <div class="stat"><div class="label">AJUSTEMENT MAX</div><div class="value" id="adaptiveBias">±0 pt</div></div>
+</div>
+<div class="small" id="adaptiveStatus" style="margin-top:9px">🧠 Observation : 0/30 trades clôturés. Pas encore d'adaptation automatique.</div>
+<div class="row" style="margin-top:9px">
+  <button id="resetLearning">🧹 Reset apprentissage</button>
+</div>
+</div>
+<div class="card">
+<h3>📊 STATS</h3>
+<div class="row">
+<div class="stat"><div class="label">📡 LATENCE MOY.</div><div class="value" id="statAvgLatency">—</div></div>
+<div class="stat"><div class="label">🐌 MAX LATENCE</div><div class="value" id="statMaxLatency">—</div></div>
+<div class="stat"><div class="label">🔄 SCANS</div><div class="value" id="statScans">0</div></div>
+<div class="stat"><div class="label">🧠 SCAN MOYEN</div><div class="value" id="statAvgScan">—</div></div>
+</div>
+<div class="row" style="margin-top:9px">
+<div class="stat"><div class="label">🏎️ MEILLEUR SCAN</div><div class="value" id="statMinScan">—</div></div>
+<div class="stat"><div class="label">🐌 PIRE SCAN</div><div class="value" id="statMaxScan">—</div></div>
+<div class="stat"><div class="label">📨 REQUÊTES</div><div class="value" id="statRequests">0</div></div>
+<div class="stat"><div class="label">⚠️ ERREURS</div><div class="value" id="statErrors">0</div></div>
+</div>
+<div class="small" id="directionStats" style="margin-top:9px">📈 LONG : 0 · 📉 SHORT : 0</div>
+</div>
+
+<div class="card">
+<h3>💰 Portefeuille fictif</h3>
+<div class="row">
+<div class="stat"><div class="label">LIQUIDITÉS</div><div class="value" id="paperCash">10 000 €</div></div>
+<div class="stat"><div class="label">VALEUR</div><div class="value" id="paperEquity">10 000 €</div></div>
+<div class="stat"><div class="label">GAIN / PERTE</div><div class="value" id="paperPnl">0,00 €</div></div>
+<div class="stat"><div class="label">POSITION</div><div class="value" id="paperPos">AUCUNE</div></div>
+</div>
+<div class="small" id="paperStatus" style="margin-top:9px">Simulation prête · spot sans levier · frais 0,10 % simulés · aucun ordre réel.</div>
+<div class="small" style="margin-top:6px">V8.5 ADAPTIVE PRO : valeur = liquidités + valeur des positions. Le montant acheté est réellement réservé à l’entrée : pas de levier caché ni de gains artificiellement multipliés.</div>
+</div>
+<div class="card">
+<h3>📌 Détail des positions</h3>
+<div class="small">Chaque position affiche le montant réellement engagé, le prix d’entrée, le prix actuel, le gain/perte latent, le stop et le TP. Les couleurs ACHAT/VENTE/PRUDENT restent identiques.</div>
+<div id="positionDetails" class="positions"><div class="small">Aucune position ouverte.</div></div>
+</div>
+
+<div class="card">
+<h3>📊 Backtest + validation</h3>
+<div class="row">
+<div class="stat"><div class="label">RENDEMENT TEST</div><div class="value" id="trainRet">—</div></div>
+<div class="stat"><div class="label">RENDEMENT VALIDATION</div><div class="value" id="testRet">—</div></div>
+<div class="stat"><div class="label">DRAWDOWN</div><div class="value" id="dd">—</div></div>
+<div class="stat"><div class="label">TRADES</div><div class="value" id="ntrades">—</div></div>
+</div>
+<div class="small" id="robust"></div>
+</div>
+
+<div class="card">
+<h3>🏆 Réglages retenus</h3>
+<div class="row">
+<div class="stat"><div class="label">SCORE MIN</div><div class="value" id="pScore">—</div></div>
+<div class="stat"><div class="label">STOP</div><div class="value" id="pStop">—</div></div>
+<div class="stat"><div class="label">TP</div><div class="value" id="pTp">—</div></div>
+<div class="stat"><div class="label">RISQUE</div><div class="value" id="pRisk">—</div></div>
+</div>
+</div>
+
+<div class="card">
+<h3>🔬 Lecture du marché</h3><div id="market" class="small">—</div>
+</div>
+
+<div class="card">
+<h3>📋 Derniers trades de validation</h3><div id="history" class="small">—</div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+let candles=[],best=null,last=null;
+
+function ema(a,p){let k=2/(p+1),e=a[0],o=[];for(let i=0;i<a.length;i++){e=i? a[i]*k+e*(1-k):a[i];o.push(e)}return o}
+function avg(a){return a.length?a.reduce((x,y)=>x+y,0)/a.length:0}
+function atr(c,p=14){let tr=[];for(let i=0;i<c.length;i++)tr.push(i?Math.max(c[i].h-c[i].l,Math.abs(c[i].h-c[i-1].c),Math.abs(c[i].l-c[i-1].c)):c[i].h-c[i].l);let a=avg(tr.slice(0,p));for(let i=p;i<tr.length;i++)a=(a*(p-1)+tr[i])/p;return a}
+function rsi(a,p=14){if(a.length<p+2)return 50;let g=0,l=0;for(let i=1;i<=p;i++){let d=a[i]-a[i-1];g+=Math.max(d,0);l+=Math.max(-d,0)}let ag=g/p,al=l/p;for(let i=p+1;i<a.length;i++){let d=a[i]-a[i-1];ag=(ag*(p-1)+Math.max(d,0))/p;al=(al*(p-1)+Math.max(-d,0))/p}return al?100-100/(1+ag/al):100}
+function macd(a){let x=ema(a,12),y=ema(a,26),m=x.map((v,i)=>v-y[i]),s=ema(m.slice(9),9).at(-1);return m.at(-1)-s}
+function score(c,i){
+ if(i<205)return null;
+ let a=c.slice(0,i+1),cl=a.map(x=>x.c),vl=a.map(x=>x.v),p=cl.at(-1);
+ let e20=ema(cl,20),e50=ema(cl,50),e200=ema(cl,200),R=rsi(cl),A=atr(a),M=macd(cl);
+ let v=vl.at(-1)/avg(vl.slice(-20)), slope=(e20.at(-1)-e20.at(-6))/e20.at(-6)*100;
+ let s=50,f=[];
+ const add=(n,val,pts)=>{s+=pts;f.push([n,val,pts])};
+ if(p>e20.at(-1))add("Tendance","prix > EMA20",10);else add("Tendance","prix < EMA20",-10);
+ if(e20.at(-1)>e50.at(-1))add("Structure","EMA20 > EMA50",10);else add("Structure","EMA20 < EMA50",-10);
+ if(e50.at(-1)>e200.at(-1))add("Long terme","EMA50 > EMA200",8);else add("Long terme","EMA50 < EMA200",-8);
+ if(R>55&&R<72)add("RSI",R.toFixed(1)+" zone favorable",10);else if(R<35)add("RSI",R.toFixed(1)+" survendu",4);else if(R>75)add("RSI",R.toFixed(1)+" suracheté",-10);else if(R<45)add("RSI",R.toFixed(1)+" faible",-3);else f.push(["RSI",R.toFixed(1),0]);
+ if(M>0)add("Momentum","MACD positif",8);else add("Momentum","MACD négatif",-8);
+ if(v>1.3)add("Volume",v.toFixed(1)+"× moyenne",M>0?6:-6);
+ if(slope>.15)add("Pente","EMA20 accélère",5);else if(slope<-.15)add("Pente","EMA20 baisse",-5);
+ const extension=(p-e20.at(-1))/e20.at(-1)*100;
+ if(extension>6)add("Extension","prix trop éloigné de l'EMA20",-6);
+ s=Math.max(0,Math.min(100,Math.round(s)));
+ return {s,R,A,v,M,e20:e20.at(-1),e50:e50.at(-1),e200:e200.at(-1),f};
+}
+
+function simulate(c,p,from,to){
+  const INITIAL=1000; let cash=INITIAL,peak=INITIAL,dd=0,pos=null,tr=[];
+  for(let i=from;i<to;i++){
+    const z=score(c,i); if(!z) continue; const x=c[i];
+    const longSig=z.s>=p.score, shortSig=z.s<=100-p.score;
+    if(!pos&&(longSig||shortSig)){
+      const side=longSig?'LONG':'SHORT'; const entry=side==='LONG'?x.c*(1+SLIPPAGE):x.c*(1-SLIPPAGE);
+      const stop=side==='LONG'?entry-z.A*p.stop:entry+z.A*p.stop, tp=side==='LONG'?entry+z.A*p.tp:entry-z.A*p.tp;
+      const risk=cash*p.risk, riskPerUnit=Math.max(Math.abs(entry-stop),entry*0.0005);
+      const qty=Math.min(risk/riskPerUnit,cash/(entry*(1+FEE)));
+      if(qty>0){const entryFee=qty*entry*FEE;cash-=qty*entry+entryFee;pos={side,entry,stop,tp,qty,t:x.t,entryFee,entryNotional:qty*entry};}
+    } else if(pos){
+      let ex=null; if(pos.side==='LONG'){if(x.l<=pos.stop)ex=pos.stop;else if(x.h>=pos.tp)ex=pos.tp;else if(shortSig)ex=x.c;}
+      else {if(x.h>=pos.stop)ex=pos.stop;else if(x.l<=pos.tp)ex=pos.tp;else if(longSig)ex=x.c;}
+      if(ex!==null){const fill=pos.side==='LONG'?ex*(1-SLIPPAGE):ex*(1+SLIPPAGE),gross=pos.qty*fill,fee=gross*FEE;const pnl=pos.side==='LONG'?gross-fee-pos.entryNotional-pos.entryFee:pos.entryNotional-gross-fee-pos.entryFee;cash+=pos.side==='LONG'?gross-fee:pos.entryNotional+Math.max(0,pos.entryNotional-gross)-fee;tr.push({t:pos.t,pnl,side:pos.side});pos=null;}
+    }
+    const equity=pos?(pos.side==='LONG'?cash+pos.qty*x.c:cash+pos.entryNotional+(pos.entryNotional-pos.qty*x.c)):cash;peak=Math.max(peak,equity);dd=Math.max(dd,(peak-equity)/peak);
+  }
+  if(pos){const ex=c[to-1].c,fill=pos.side==='LONG'?ex*(1-SLIPPAGE):ex*(1+SLIPPAGE),gross=pos.qty*fill,fee=gross*FEE,pnl=pos.side==='LONG'?gross-fee-pos.entryNotional-pos.entryFee:pos.entryNotional-gross-fee-pos.entryFee;cash+=pos.side==='LONG'?gross-fee:pos.entryNotional+Math.max(0,pos.entryNotional-gross)-fee;tr.push({t:pos.t,pnl,side:pos.side});}
+  const wins=tr.filter(x=>x.pnl>0).length; return {cash,ret:cash/INITIAL-1,dd,tr,wr:tr.length?wins/tr.length:0};
+}
+
+async function load(){
+ let s=$("symbol").value,iv=$("candleInterval").value,days=+$("days").value;
+ let bars=Math.min(1000,Math.ceil(days*24/(iv==="1h"?1:4))+210);
+ let r=await fetch(`https://api.binance.com/api/v3/klines?symbol=${s}&interval=${iv}&limit=${bars}`);
+ let k=await r.json();if(!Array.isArray(k))throw Error("Impossible de récupérer les bougies Binance.");
+ return k.slice(0,-1).map(x=>({t:+x[0],h:+x[2],l:+x[3],c:+x[4],v:+x[5]}));
+}
+
+function quality(r){
+  if(r.tr.length<MIN_VALIDATION_TRADES || r.ret<=0) return -Infinity;
+  const pf=r.tr.filter(x=>x.pnl>0).reduce((a,x)=>a+x.pnl,0)/Math.max(1,-r.tr.filter(x=>x.pnl<0).reduce((a,x)=>a+x.pnl,0));
+  return r.ret/(1+4*r.dd)*(0.55+0.25*Math.min(r.tr.length/20,1)+0.20*Math.min(pf/2,1));
+}
+
+const PAPER_INITIAL=10000;
+let paper = {cash:PAPER_INITIAL, positions:{}, lastPrices:{}, realized:0, trades:0, hourKey:"", tradesThisHour:0, qty:0, entry:0, entryNotional:0, entryFee:0};
+let universe=[], scanBusy=false;
+let shortEnabled = localStorage.getItem("cryptoBot_shortEnabled") !== "false";
+// ═════════════════════════════════════════════════════════════
+// V8.5 ADAPTIVE PRO — apprentissage statistique conservateur
+// ═════════════════════════════════════════════════════════════
+// Principe :
+// • 30 trades PAPER clôturés minimum avant toute adaptation.
+// • LONG et SHORT apprennent séparément.
+// • Un pattern doit avoir 8 observations avant d'influencer le score.
+// • L'influence est plafonnée à ±5 points.
+// • Les observations sont persistantes dans ce navigateur.
+// • Le bot n'auto-modifie ni frais, ni levier, ni limites de risque.
+// • Reset disponible depuis l'interface.
+// ═════════════════════════════════════════════════════════════
+const V8_ADAPTIVE_PRO = true;
+const ADAPTIVE_KEY = "cryptoBot_v8_5_adaptive_pro_v1";
+const ADAPTIVE_MIN_TRADES = 30;
+const ADAPTIVE_MIN_PATTERN = 8;
+const ADAPTIVE_MAX_BIAS = 5;
+const ADAPTIVE_SHRINK = 12;
+
+function newAdaptiveMemory(){
+  return {
+    version:1,
+    closedTrades:0,
+    wins:0,
+    losses:0,
+    realized:0,
+    patterns:{}
+  };
+}
+
+function loadAdaptiveMemory(){
+  try{
+    const x=JSON.parse(localStorage.getItem(ADAPTIVE_KEY)||"null");
+    if(x && x.version===1 && x.patterns && Number.isFinite(x.closedTrades)) return x;
+  }catch(e){}
+  return newAdaptiveMemory();
+}
+let adaptive = loadAdaptiveMemory();
+
+function saveAdaptiveMemory(){
+  try{ localStorage.setItem(ADAPTIVE_KEY,JSON.stringify(adaptive)); }catch(e){}
+}
+
+function adaptiveSnapshot(r){
+  if(!r) return null;
+  return {
+    s:Number(r.score),
+    R:Number(r.R),
+    A:Number(r.A),
+    v:Number(r.v),
+    e20:Number(r.e20),
+    e50:Number(r.e50),
+    e200:Number(r.e200),
+    M:Number(r.M)
+  };
+}
+
+function adaptivePatternKey(side,z){
+  if(!z || !Number.isFinite(z.s)) return side+"|UNKNOWN";
+  const sb=Math.max(0,Math.min(100,Math.floor(z.s/5)*5));
+  const rb=z.R<35?"OVERSOLD":z.R<50?"WEAK":z.R<60?"NEUTRAL":z.R<72?"FAVORABLE":"OVERBOUGHT";
+  const trend=z.e20>=z.e50?"UP":"DOWN";
+  const longTrend=z.e50>=z.e200?"LT-UP":"LT-DOWN";
+  const mom=z.M>0?"M+":"M-";
+  const vol=z.v>=1.3?"VOL+":"VOL";
+  return `${side}|S${sb}|R${rb}|${trend}|${longTrend}|${mom}|${vol}`;
+}
+
+function adaptiveRecord(side,z,pnl){
+  if((side!=="LONG"&&side!=="SHORT") || !z || !Number.isFinite(pnl)) return;
+  const key=adaptivePatternKey(side,z);
+  const p=adaptive.patterns[key] || {n:0,w:0,l:0,pnl:0};
+  p.n++;
+  if(pnl>0) p.w++;
+  else if(pnl<0) p.l++;
+  p.pnl+=pnl;
+  adaptive.patterns[key]=p;
+  adaptive.closedTrades++;
+  if(pnl>0) adaptive.wins++;
+  else if(pnl<0) adaptive.losses++;
+  adaptive.realized+=pnl;
+  saveAdaptiveMemory();
+  renderAdaptive();
+}
+
+function adaptiveBias(side,z){
+  if(!z || adaptive.closedTrades<ADAPTIVE_MIN_TRADES) return 0;
+  const p=adaptive.patterns[adaptivePatternKey(side,z)];
+  if(!p || p.n<ADAPTIVE_MIN_PATTERN) return 0;
+
+  // On part de 50% de réussite, puis on réduit l'effet des petits échantillons.
+  const winRate=p.w/p.n;
+  const confidence=p.n/(p.n+ADAPTIVE_SHRINK);
+  const raw=(winRate-0.5)*20*confidence;
+
+  return Math.max(-ADAPTIVE_MAX_BIAS,Math.min(ADAPTIVE_MAX_BIAS,raw));
+}
+
+function adaptiveScore(side,z){
+  const b=adaptiveBias(side,z);
+  return Math.max(0,Math.min(100,side==="LONG" ? z.score+b : z.score-b));
+}
+
+function renderAdaptive(){
+  const n=adaptive.closedTrades;
+  const wr=n ? (adaptive.wins/n*100) : 0;
+  const reliable=Object.values(adaptive.patterns).filter(p=>p.n>=ADAPTIVE_MIN_PATTERN);
+  let maxBias=0;
+  for(const key of Object.keys(adaptive.patterns)){
+    const p=adaptive.patterns[key];
+    if(p.n>=ADAPTIVE_MIN_PATTERN){
+      // Estimation d'influence actuelle pour l'affichage.
+      const conf=p.n/(p.n+ADAPTIVE_SHRINK);
+      const b=Math.abs((p.w/p.n-0.5)*20*conf);
+      maxBias=Math.max(maxBias,Math.min(ADAPTIVE_MAX_BIAS,b));
+    }
+  }
+  const e=$("adaptiveTrades"); if(e)e.textContent=`${n} / ${ADAPTIVE_MIN_TRADES}`;
+  const w=$("adaptiveWinRate"); if(w)w.textContent=n?Math.round(wr)+"%":"—";
+  const p=$("adaptivePatterns"); if(p)p.textContent=String(reliable.length);
+  const b=$("adaptiveBias"); if(b)b.textContent="±"+maxBias.toFixed(1)+" pt";
+  const st=$("adaptiveStatus");
+  if(st){
+    if(n<ADAPTIVE_MIN_TRADES){
+      st.textContent=`🧠 Observation : ${n}/${ADAPTIVE_MIN_TRADES} trades clôturés. Le bot apprend sans encore modifier ses scores.`;
+    }else if(!reliable.length){
+      st.textContent=`🟡 Apprentissage prêt, mais aucun pattern n'a encore ${ADAPTIVE_MIN_PATTERN} observations.`;
+    }else{
+      st.textContent=`🟢 ADAPTIVE ACTIF · ${n} trades · ${Math.round(wr)}% gagnants · ${reliable.length} patterns suffisamment observés · influence plafonnée à ±${ADAPTIVE_MAX_BIAS} points.`;
+    }
+  }
+}
+
+function resetAdaptive(){
+  adaptive=newAdaptiveMemory();
+  saveAdaptiveMemory();
+  renderAdaptive();
+  if($("paperStatus"))$("paperStatus").textContent="🧹 Mémoire ADAPTIVE PRO réinitialisée.";
+}
+
+let perfStats={scans:0,scanTotal:0,scanMin:Infinity,scanMax:0,requests:0,errors:0,longs:0,shorts:0};
+// V8.5 ADAPTIVE PRO : cache des réglages lourds pour éviter de refaire l'optimisation à chaque cycle.
+const optimizationCache = new Map();
+const OPTIMIZATION_CACHE_MS = 30*60*1000; // ré-optimisation périodique pour rester adaptatif
+const CANDLE_LIMIT = 260;
+const SCAN_BATCH_SIZE = 12; // plus rapide que V7.15, tout en restant raisonnable pour Binance
+const FEE=0.001; // 0,10% par opération, simulation
+const SLIPPAGE=0.0005; // 0,05% de glissement simulé par côté
+const MAX_RISK_PER_TRADE=0.01; // perte maximale visée au stop: 1% du portefeuille
+const MAX_CAPITAL_PER_POSITION=0.05; // maximum 5% du portefeuille engagé par position en mode FORT
+const MIN_VALIDATION_TRADES=8; // minimum de trades pour juger la validation
+const MAX_VALIDATION_DD=0.15; // niveau vert
+const CAUTIOUS_VALIDATION_RET=-0.05; // niveau orange : perte validation max -5%
+const CAUTIOUS_VALIDATION_DD=0.07; // niveau orange : drawdown max 7%
+const CAUTIOUS_SCORE=80; // niveau orange : signal technique suffisamment fort
+const CAUTIOUS_RISK_FACTOR=0.50; // risque divisé par 2 en validation orange
+const CAUTIOUS_CAPITAL_PER_POSITION=0.03; // 3% max par position en mode PRUDENT
+let autoTimer = null;
+
+function priceDecimals(x){
+  x=Math.abs(Number(x)||0);
+  if(x>=1) return 3;
+  if(x>=0.1) return 5;
+  if(x>=0.01) return 6;
+  if(x>=0.001) return 7;
+  return 9;
+}
+function fmtPrice(x){
+  const n=Number(x)||0;
+  const d=priceDecimals(n);
+  return n.toLocaleString("fr-FR",{minimumFractionDigits:d,maximumFractionDigits:d});
+}
+function eur(x){
+  return fmtPrice(x)+" €";
+}
+function money2(x){
+  return Number(x).toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2})+" €";
+}
+function paperEquity(price){
+  return paper.cash + (paper.qty ? paper.qty * price : 0);
+}
+function renderPaper(price=paper.last||0){
+  const eq = paperEquity(price);
+  const pnl = eq - PAPER_INITIAL;
+  $("paperCash").textContent=money2(paper.cash);
+  $("paperEquity").textContent=money2(eq);
+  $("paperPnl").textContent=(pnl>=0?"+":"")+money2(pnl);
+  $("paperPnl").className="value "+(pnl>=0?"good":"bad");
+  $("paperPos").textContent=paper.qty ? ("LONG · "+paper.qty.toFixed(6)) : "AUCUNE";
+}
+
+async function getTop100(){
+  perfStats.requests++;
+  const r=await fetch("https://api.binance.com/api/v3/ticker/24hr");
+  const a=await r.json();
+  if(!Array.isArray(a)) throw Error("Impossible de récupérer le classement Binance.");
+  return a.filter(x=>/USDT$/.test(x.symbol) && !/^(USDC|FDUSD|TUSD|USDP|DAI)USDT$/.test(x.symbol))
+    .sort((x,y)=>(+y.quoteVolume)-(+x.quoteVolume))
+    .slice(0,100)
+    .map(x=>x.symbol);
+}
+async function loadAsset(symbol, interval="15m"){
+  const limit=CANDLE_LIMIT;
+  perfStats.requests++;
+  const r=await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`);
+  const k=await r.json();
+  if(!Array.isArray(k)) throw Error("Données indisponibles pour "+symbol);
+  return k.slice(0,-1).map(x=>({t:+x[0],h:+x[2],l:+x[3],c:+x[4],v:+x[5]}));
+}
+function scoreLabel(s){return s>=80?"🟢 FORT":s>=70?"🟢 BON":s>=60?"🟡 MOYEN":"⚪ FAIBLE";}
+function signalFromScore(s,threshold=75){return s>=threshold?"ACHAT":s<=100-threshold?"VENTE":"ATTENDRE";}
+function renderTop100(rows){
+  $("top100").innerHTML=rows.map((r,i)=>{
+    const sig=signalFromScore(r.last.s,r.best.score),cls=sig==="ACHAT"?"good":sig==="VENTE"?"bad":"warn";
+    const level=r.validationLevel||"—";
+    const levelCls=level==="FORT"?"good":level==="PRUDENT"?"warn":"bad";
+    const displayState = level==="BLOQUE" ? "BLOQUE" : sig==="ATTENDRE" ? "ATTENDRE" : level==="PRUDENT" ? "PRUDENT" : level==="FORT" ? "FORT" : "ATTENDRE";
+    const displayCls = displayState==="BLOQUE" || displayState==="ATTENDRE" ? "bad" : levelCls;
+    return `<div class="top100-row">
+      <div class="top100-main"><b>${i+1}. ${r.symbol.replace("USDT","")}</b> · <span class="${cls}">${sig}</span> · <span class="top100-score">${r.last.s}/100</span></div>
+      <div class="top100-meta"><span class="${displayCls}">${displayState}</span> · Val. ${(r.test.ret*100).toFixed(1)}%</div>
+    </div>`;
+  }).join("")||'<div class="small">Analyse prête.</div>';
+}
+async function analyzeOne(symbol){
+  const interval=$("candleInterval").value;
+  const days=$("days").value;
+  const cacheKey=`${symbol}|${interval}|${days}`;
+  const c=await loadAsset(symbol,interval);
+  const last=score(c,c.length-1);
+  if(!last) throw Error("Pas assez de données pour "+symbol);
+
+  const cached=optimizationCache.get(cacheKey);
+  const now=Date.now();
+  if(cached && now-cached.ts<OPTIMIZATION_CACHE_MS){
+    // On garde les réglages/test validés et on ne recalcule que le signal actuel.
+    return {symbol,c,best:cached.best,test:cached.test,last};
+  }
+
+  const cut=Math.floor(c.length*.7),params=[];
+  for(const score of [65,70,75,80])for(const stop of [1.2,1.5,1.8,2.1])for(const tp of [1.8,2.2,2.8,3.2])for(const risk of [.01,.02,.03]){
+    const r=simulate(c,{score,stop,tp,risk},205,cut);
+    params.push({...r,score,stop,tp,risk,q:quality(r)});
+  }
+  const b=params.sort((a,b)=>b.q-a.q)[0],test=simulate(c,b,cut,c.length);
+  optimizationCache.set(cacheKey,{ts:now,best:b,test});
+  return {symbol,c,best:b,test,last};
+}
+async function analyzeTop100(){
+  if(scanBusy)return;
+  scanBusy=true;$("run").disabled=true; const scanStarted=performance.now();$("run").textContent="⏳ Analyse + test TOP 100…";
+  $("top100").innerHTML="⏳ Analyse des 100 cryptos en cours…";
+  try{
+    universe=await getTop100();
+    const rows=[];
+    const BATCH_SIZE=SCAN_BATCH_SIZE;
+    for(let i=0;i<universe.length;i+=BATCH_SIZE){
+      const batch=universe.slice(i,i+BATCH_SIZE);
+      const results=await Promise.all(batch.map(async symbol=>{
+        try{return await analyzeOne(symbol);}catch(e){perfStats.errors++;return null;}
+      }));
+      results.filter(Boolean).forEach(r=>rows.push(r));
+      $("top100").innerHTML=`⏳ ${rows.length}/${universe.length} cryptos analysées…`;
+      renderTop100(rows.sort((a,b)=>b.last.s-a.last.s));
+    }
+    rows.sort((a,b)=>(b.last.s-a.last.s)||(b.test.ret-a.test.ret));
+    if(!rows.length)throw Error("Aucune crypto n'a pu être analysée.");
+    const classifyValidation = r => {
+      const enoughTrades = r.test.tr.length >= MIN_VALIDATION_TRADES;
+      const strong = enoughTrades && r.test.ret > 0 && r.test.dd <= MAX_VALIDATION_DD;
+      const cautious = !strong && enoughTrades &&
+        r.test.ret >= CAUTIOUS_VALIDATION_RET &&
+        r.test.dd <= CAUTIOUS_VALIDATION_DD &&
+        r.last.s >= CAUTIOUS_SCORE;
+      return strong ? "FORT" : cautious ? "PRUDENT" : "BLOQUE";
+    };
+    rows.forEach(r=>r.validationLevel=classifyValidation(r));
+    const eligible=rows.filter(r=>r.validationLevel!=="BLOQUE");
+    window.top100Rows=rows;
+    window.top100Eligible=eligible;
+    const top=eligible.length ? eligible[0] : rows[0];
+    candles=top.c;best=top.best;last=top.last;
+    const price=top.c.at(-1).c,stop=price-top.last.A*best.stop,tp1=price+top.last.A*best.tp,tp2=price+top.last.A*(best.tp*1.45);
+    const confidence=Math.max(0,Math.min(100,50+Math.abs(top.last.s-50)*1.15+(top.last.v>1.3?5:0)));
+    const sig=signalFromScore(top.last.s,best.score);
+    // La V7.21.x actuelle utilise une interface TOP 100 simplifiée :
+    // ne pas tenter d'écrire dans les anciens widgets détaillés supprimés.
+    if($("signal")){ $("signal").textContent=sig; $("signal").className="big "+(sig==="ACHAT"?"good":sig==="VENTE"?"bad":"warn"); }
+    if($("score")) $("score").textContent=top.last.s+"/100";
+    if($("scorebar")) $("scorebar").style.width=top.last.s+"%";
+    if($("confidence")) $("confidence").textContent=Math.round(confidence)+"%";
+    if($("price")) $("price").textContent=fmtPrice(price)+" €";
+    if($("factors")) $("factors").innerHTML=top.last.f.map(x=>`<span class="pill">${x[0]}: ${x[1]}</span>`).join("");
+    if($("entry")) $("entry").textContent=fmtPrice(price)+" €";
+    if($("stop")) $("stop").textContent=fmtPrice(stop)+" €";
+    if($("tp1")) $("tp1").textContent=fmtPrice(tp1)+" €";
+    if($("tp2")) $("tp2").textContent=fmtPrice(tp2)+" €";
+    const validationLevel=top.validationLevel;
+    const cautiousMode = validationLevel==="PRUDENT";
+    const effectiveRisk=Math.min(best.risk,MAX_RISK_PER_TRADE)*(cautiousMode?CAUTIOUS_RISK_FACTOR:1);
+    const effectiveCapital=cautiousMode?CAUTIOUS_CAPITAL_PER_POSITION:MAX_CAPITAL_PER_POSITION;
+    if($("risk")) $("risk").textContent=(effectiveRisk*100).toFixed(1)+"% max";
+    if($("riskText")) $("riskText").textContent=validationLevel==="FORT"
+      ? `🟢 Validation FORT : risque max 1% · capital engagé max 5% par position.`
+      : validationLevel==="PRUDENT"
+      ? `🟠 Validation PRUDENT : le bot peut trader seulement avec un signal ≥ ${CAUTIOUS_SCORE}/100 · risque divisé par 2 · capital max 3% par position.`
+      : `🔴 Validation BLOQUÉE : aucun nouveau trade.`;
+    if($("why")) $("why").innerHTML=validationLevel==="FORT"
+      ? `<b>${sig}</b> sur ${top.symbol.replace("USDT","")} : score ${top.last.s}/100. 🟢 Validation FORT (${(top.test.ret*100).toFixed(2)}%, ${top.test.tr.length} trades, DD ${(top.test.dd*100).toFixed(2)}%). Le bot peut prendre une position normale. Confiance indicative : <b>${Math.round(confidence)}%</b>.`
+      : validationLevel==="PRUDENT"
+      ? `<b>${sig}</b> sur ${top.symbol.replace("USDT","")} : score ${top.last.s}/100. 🟠 Validation PRUDENT (${(top.test.ret*100).toFixed(2)}%, ${top.test.tr.length} trades, DD ${(top.test.dd*100).toFixed(2)}%). Le bot peut tenter une petite position, avec risque et capital réduits de moitié.`
+      : `<b>ATTENDRE</b> : validation trop faible sur les 100 cryptos. Aucune nouvelle position.`;
+    $("trainRet").textContent=(best.ret*100).toFixed(2)+"%";$("testRet").textContent=(top.test.ret*100).toFixed(2)+"%";
+    $("dd").textContent=(top.test.dd*100).toFixed(2)+"%";$("ntrades").textContent=top.test.tr.length;
+    $("pScore").textContent=best.score;$("pStop").textContent=best.stop+"× ATR";$("pTp").textContent=best.tp+"× ATR";$("pRisk").textContent=(effectiveRisk*100).toFixed(1)+"% max";
+    if($("robust"))$("robust").textContent=validationLevel==="FORT"
+      ?"🟢 Validation FORT : stratégie positive sur la partie non optimisée."
+      :validationLevel==="PRUDENT"
+      ?"🟠 Validation PRUDENT : stratégie imparfaite, mais autorisée avec exposition réduite."
+      :"🔴 Validation BLOQUÉE : stratégie trop faible pour trader.";
+    if($("market"))$("market").innerHTML=`🏆 Meilleure opportunité : <b>${top.symbol.replace("USDT","")}</b> · TOP 100 · ${$("candleInterval").value} · ${$("days").value} jours. ATR ≈ ${top.last.A.toFixed(2)} · RSI ${top.last.R.toFixed(1)} · volume ${top.last.v.toFixed(1)}× sa moyenne.`;
+    if($("history"))$("history").innerHTML=top.test.tr.slice(-12).reverse().map(t=>`${new Date(t.t).toLocaleDateString("fr-FR")} · <span class="${t.pnl>=0?"good":"bad"}">${t.pnl>=0?"+":""}${t.pnl.toFixed(2)} €</span>`).join("<br>")||"Aucun trade de validation.";
+    renderTop100(rows);
+    if(best) await multiPaperStep(rows.map(r=>({symbol:r.symbol,score:r.last.s,price:r.c.at(-1).c,A:r.last.A,c:r.c})));
+  }catch(e){
+    const msg='⚠️ '+e.message;
+    if($("why")) $("why").innerHTML='<span class="err">Erreur : '+e.message+'</span>';
+    if($("paperStatus")) $("paperStatus").textContent=msg;
+  }
+  finally{const elapsed=performance.now()-scanStarted;perfStats.scans++;perfStats.scanTotal+=elapsed;perfStats.scanMin=Math.min(perfStats.scanMin,elapsed);perfStats.scanMax=Math.max(perfStats.scanMax,elapsed);$("statScans").textContent=perfStats.scans;$("statAvgScan").textContent=(perfStats.scanTotal/perfStats.scans/1000).toFixed(1)+" s";$("statMinScan").textContent=(perfStats.scanMin/1000).toFixed(1)+" s";$("statMaxScan").textContent=(perfStats.scanMax/1000).toFixed(1)+" s";$("statRequests").textContent=perfStats.requests;$("statErrors").textContent=perfStats.errors;$("directionStats").textContent=`📈 LONG : ${perfStats.longs} · 📉 SHORT : ${perfStats.shorts}`;scanBusy=false;$("run").disabled=false;$("run").textContent="🧠 Analyser + tester TOP 100";}
+}
+function multiPaperStep(rows){
+  const now=Date.now(),hk=new Date(now).toISOString().slice(0,13); if(paper.hourKey!==hk){paper.hourKey=hk;paper.tradesThisHour=0;}
+  const maxTrades=+$('maxTrades').value,maxPos=+$('maxPositions').value,threshold=best?.score||75;
+  const eligibleMap=new Map((window.top100Eligible||[]).map(e=>[e.symbol,e.validationLevel]));
+  if(!eligibleMap.size){$('paperStatus').textContent='🔴 Aucun nouveau trade : validation trop faible sur le TOP 100.';renderMultiPaper(rows);return;}
+  for(const r of rows){
+    if(paper.tradesThisHour>=maxTrades||Object.keys(paper.positions).length>=maxPos) break;
+    const level=eligibleMap.get(r.symbol); if(!level||level==='BLOQUE'||paper.positions[r.symbol]) continue;
+    if(level==='PRUDENT'&&r.score<CAUTIOUS_SCORE) continue;
+    const longScore=adaptiveScore('LONG',r), shortScore=adaptiveScore('SHORT',r); const side=longScore>=threshold?'LONG':(shortEnabled&&shortScore<=100-threshold?'SHORT':null); if(!side) continue;
+    const cautious=level==='PRUDENT',riskBudget=paper.cash*Math.min(best.risk,MAX_RISK_PER_TRADE)*(cautious?CAUTIOUS_RISK_FACTOR:1),dist=r.A*best.stop;
+    const qty=Math.min(riskBudget/Math.max(dist,r.price*0.0005),(paper.cash*(cautious?CAUTIOUS_CAPITAL_PER_POSITION:MAX_CAPITAL_PER_POSITION))/r.price);
+    if(side==='SHORT' && !shortEnabled) continue;
+    const fill=side==='LONG'?r.price*(1+SLIPPAGE):r.price*(1-SLIPPAGE),notional=qty*fill,fee=notional*FEE; if(qty<=0||notional+fee>paper.cash) continue;
+    paper.cash-=notional+fee; paper.positions[r.symbol]={side,qty,entry:fill,entryAt:now,margin:notional,stop:side==='LONG'?fill-dist:fill+dist,tp:side==='LONG'?fill+r.A*best.tp:fill-r.A*best.tp,entryFee:fee,entryNotional:notional,leverage:1,learnSnapshot:adaptiveSnapshot(r)};
+    paper.trades++;paper.tradesThisHour++; if(side==='LONG')perfStats.longs++;else perfStats.shorts++;
+    $('paperStatus').textContent=(side==='LONG'?'📈':'📉')+' '+side+' fictif '+r.symbol.replace('USDT','')+' · levier 1.0× · '+money2(notional)+' notionnels.';
+  }
+  for(const symbol of Object.keys(paper.positions)){
+    const p=paper.positions[symbol],r=rows.find(x=>x.symbol===symbol);if(!r)continue;paper.lastPrices[symbol]=r.price;
+    const reversal=p.side==='LONG'?r.score<=100-threshold:r.score>=threshold,hit=p.side==='LONG'?(r.price<=p.stop||r.price>=p.tp):(r.price>=p.stop||r.price<=p.tp);
+    if(hit||reversal){const fill=p.side==='LONG'?r.price*(1-SLIPPAGE):r.price*(1+SLIPPAGE),gross=p.qty*fill,fee=gross*FEE,pnl=p.side==='LONG'?gross-fee-p.entryNotional-p.entryFee:p.entryNotional-gross-fee-p.entryFee;paper.cash+=p.margin+pnl;paper.realized+=pnl;adaptiveRecord(p.side,p.learnSnapshot,pnl);delete paper.positions[symbol];paper.trades++;paper.tradesThisHour++;$('paperStatus').textContent=(pnl>=0?'🟢':'🔴')+' Clôture '+p.side+' '+symbol.replace('USDT','')+' : '+(pnl>=0?'+':'')+money2(pnl)+' net.';}
+  }
+  renderMultiPaper(rows);
+}
+function renderPositionDetails(rows=[]){
+  const box=$("positionDetails");
+  const entries=Object.entries(paper.positions);
+  if(!entries.length){
+    box.innerHTML='<div class="small">Aucune position ouverte.</div>';
+    return;
+  }
+  box.innerHTML=entries.map(([symbol,p])=>{
+    const r=rows.find(x=>x.symbol===symbol);
+    const current=r?r.price:(paper.lastPrices[symbol]||p.entry);
+    const gross=current*p.qty;
+    const feeExit=gross*FEE;
+    const latent=gross-feeExit-p.entryNotional-p.entryFee;
+    const pct=p.entryNotional?latent/p.entryNotional*100:0;
+    const level=(window.top100Eligible||[]).find(x=>x.symbol===symbol)?.validationLevel||"";
+    const levelCls=level==="FORT"?"good":level==="PRUDENT"?"warn":"";
+    return `<div class="position-card">
+      <div class="position-head">
+        <div class="position-title">${p.side==="LONG"?"📈":"📉"} ${p.side} · ${symbol.replace("USDT","")}</div>
+        <div class="${levelCls}">${level||"OUVERTE"}</div>
+      </div>
+      <div class="position-grid">
+        <div class="position-item"><div class="position-label">Notionnel</div><div class="position-value">${money2(p.entryNotional)}</div></div>
+        <div class="position-item"><div class="position-label">Levier</div><div class="position-value">${p.leverage.toFixed(1)}×</div></div>
+        <div class="position-item"><div class="position-label">Quantité</div><div class="position-value">${p.qty.toLocaleString("fr-FR",{maximumFractionDigits:8})}</div></div>
+        <div class="position-item"><div class="position-label">Entrée</div><div class="position-value">${fmtPrice(p.entry)} €</div></div>
+        <div class="position-item"><div class="position-label">Actuel</div><div class="position-value">${fmtPrice(current)} €</div></div>
+        <div class="position-item"><div class="position-label">Gain / perte latent</div><div class="position-value ${latent>=0?"good":"bad"}">${latent>=0?"+":""}${money2(latent)} (${pct>=0?"+":""}${pct.toFixed(2)}%)</div></div>
+        <div class="position-item"><div class="position-label">Stop</div><div class="position-value bad">${fmtPrice(p.stop)} €</div></div>
+        <div class="position-item"><div class="position-label">TP</div><div class="position-value good">${fmtPrice(p.tp)} €</div></div>
+        <div class="position-item"><div class="position-label">Frais entrée</div><div class="position-value">${money2(p.entryFee)}</div></div>
+      </div>
+    </div>`;
+  }).join("");
+}
+function renderMultiPaper(rows=[]){
+  let eq=paper.cash;
+  for(const [s,p] of Object.entries(paper.positions)){const px=paper.lastPrices[s]||p.entry;const unreal=p.side==="LONG"?(p.qty*px-p.entryNotional):(p.entryNotional-p.qty*px);eq+=p.margin+unreal;}
+  const pnl=eq-10000;
+  $("paperCash").textContent=money2(paper.cash);
+  $("paperEquity").textContent=money2(eq);
+  $("paperPnl").textContent=(pnl>=0?"+":"")+money2(pnl);
+  $("paperPnl").className="value "+(pnl>=0?"good":"bad");
+  const n=Object.keys(paper.positions).length;
+  $("paperPos").textContent=n?`${n} / ${$("maxPositions").value}`:"AUCUNE";
+  renderPositionDetails(rows);
+}
+function paperStep(){
+  if(!candles.length || !best) return;
+  const i=candles.length-1,z=score(candles,i),price=candles[i].c;
+  if(!z) return;
+  paper.last=price;
+
+  const now=Date.now(),hk=new Date(now).toISOString().slice(0,13);
+  if(paper.hourKey!==hk){paper.hourKey=hk;paper.tradesThisHour=0;}
+  const maxTrades=+$("maxTrades").value;
+  const buy=z.s>=best.score,sell=z.s<=100-best.score;
+
+  if(!paper.qty && buy && paper.tradesThisHour<maxTrades){
+    const risk=Math.min(paper.cash*best.risk,paper.cash*MAX_RISK_PER_TRADE);
+    const stop=price-z.A*best.stop;
+    const riskPerUnit=Math.max(price-stop,price*0.0005);
+    const qty=Math.min(risk/riskPerUnit,(paper.cash*MAX_CAPITAL_PER_POSITION)/(price*(1+FEE)));
+    const cost=qty*price,fee=cost*FEE;
+    if(qty>0 && cost+fee<=paper.cash){
+      paper.cash-=cost+fee;
+      paper.qty=qty;paper.entry=price;paper.openedAt=now;paper.entryNotional=cost;paper.entryFee=fee;
+      paper.trades++;paper.tradesThisHour++;
+      $("paperStatus").textContent="🟢 Achat fictif à "+eur(price)+" · spot sans levier · frais "+money2(fee)+".";
+    }
+  }else if(paper.qty){
+    const stop=paper.entry-z.A*best.stop,tp=paper.entry+z.A*best.tp;
+    if(price<=stop || price>=tp || sell){
+      const gross=paper.qty*price,exitFee=gross*FEE;
+      const pnl=gross-exitFee-paper.entryNotional-paper.entryFee;
+      paper.cash+=gross-exitFee;paper.realized+=pnl;
+      paper.qty=0;paper.entry=0;paper.entryNotional=0;paper.entryFee=0;
+      paper.trades++;paper.tradesThisHour++;
+      $("paperStatus").textContent=(pnl>=0?"🟢":"🔴")+" Vente fictive : "+(pnl>=0?"+":"")+money2(pnl)+" net.";
+    }
+  }
+  renderPaper(price);
+}
+function resetPaper(){
+  paper={cash:PAPER_INITIAL,positions:{},lastPrices:{},realized:0,trades:0,hourKey:"",tradesThisHour:0,qty:0,entry:0,entryNotional:0,entryFee:0};
+  renderPaper();
+  $("paperStatus").textContent="Simulation réinitialisée. Capital fictif : 10 000 €.";
+}
+function startAutoTimer(){
+  if(autoTimer) clearInterval(autoTimer);
+  const minutes=Number(document.getElementById("analysisInterval")?.value || 5);
+  autoTimer=setInterval(async()=>{
+    try{ await analyzeTop100(); }
+    catch(e){ $("paperStatus").textContent="⚠️ "+e.message; }
+  }, minutes*60000);
+  $("auto").textContent="⏸️ Auto OFF";
+  $("paperStatus").textContent=`🟢 Auto-pilotage local actif · analyse toutes les ${minutes} min · bougies ${$("candleInterval").value} · jusqu’à 20 positions.`;
+}
+function restartAutoAnalysis(){
+  if(!autoTimer) return;
+  startAutoTimer();
+}
+function toggleAuto(){
+  if(autoTimer){
+    clearInterval(autoTimer); autoTimer=null;
+    $("auto").textContent="▶️ Auto ON";
+    $("paperStatus").textContent="⏸️ Auto-pilotage en pause.";
+  }else{
+    startAutoTimer();
+    analyzeTop100();
+  }
+}
+
+async function run(){
+ $("run").disabled=true;$("run").textContent="⏳ Calcul intensif…";
+ try{
+  candles=await load();
+  const cut=Math.floor(candles.length*.7),params=[];
+  for(const score of [65,70,75,80])for(const stop of [1.2,1.5,1.8,2.1])for(const tp of [1.8,2.2,2.8,3.2])for(const risk of [.01,.02,.03]){
+   const r=simulate(candles,{score,stop,tp,risk},205,cut);
+   params.push({...r,score,stop,tp,risk,q:quality(r)});
+  }
+  best=params.sort((a,b)=>b.q-a.q)[0];
+  const test=simulate(candles,best,cut,candles.length);
+  last=score(candles,candles.length-1);
+  const price=candles.at(-1).c,stop=price-last.A*best.stop,tp1=price+last.A*best.tp,tp2=price+last.A*(best.tp*1.45);
+  let confidence=Math.max(0,Math.min(100,50+Math.abs(last.s-50)*1.15+(last.v>1.3?5:0)));
+  const sig=last.s>=best.score?"ACHAT":last.s<=100-best.score?"VENTE":"ATTENDRE";
+  if($("signal"))$("signal").textContent=sig;$("signal").className="big "+(sig==="ACHAT"?"good":sig==="VENTE"?"bad":"warn");
+  if($("score"))$("score").textContent=last.s+"/100";$("scorebar").style.width=last.s+"%";
+  if($("confidence"))$("confidence").textContent=Math.round(confidence)+"%";$("price").textContent=fmtPrice(price)+" €";
+  if($("factors"))$("factors").innerHTML=last.f.map(x=>`<span class="pill">${x[0]}: ${x[1]}</span>`).join("");
+  if($("entry"))$("entry").textContent=fmtPrice(price)+" €";
+  if($("stop"))$("stop").textContent=fmtPrice(stop)+" €";
+  if($("tp1"))$("tp1").textContent=fmtPrice(tp1)+" €";
+  if($("tp2"))$("tp2").textContent=fmtPrice(tp2)+" €";
+  if($("risk"))$("risk").textContent=(best.risk*100).toFixed(1)+"%";
+  if($("riskText"))$("riskText").textContent=`Le risque par trade est plafonné dans le backtest. Si le signal est ATTENDRE, le bot ne force pas une position.`;
+  if($("why"))$("why").innerHTML=`<b>${sig}</b> car le score combine tendance, structure EMA, RSI, momentum, volume et pente. Confiance indicative : <b>${Math.round(confidence)}%</b>. Ce n'est pas une certitude de gain.`;
+  $("trainRet").textContent=(best.ret*100).toFixed(2)+"%";
+  $("testRet").textContent=(test.ret*100).toFixed(2)+"%";
+  $("dd").textContent=(test.dd*100).toFixed(2)+"%";
+  $("ntrades").textContent=test.tr.length;
+  $("pScore").textContent=best.score;$("pStop").textContent=best.stop+"× ATR";$("pTp").textContent=best.tp+"× ATR";$("pRisk").textContent=(Math.min(best.risk,MAX_RISK_PER_TRADE)*100).toFixed(1)+"% max";
+  const robust=(test.ret>0&&test.dd<.25)?"🟢 Validation encourageante : la stratégie reste positive sur la partie non optimisée.":"🟠 Validation faible : ne pas considérer cette stratégie comme robuste.";
+  if($("robust"))$("robust").textContent=robust+` Test = ${(100*best.ret).toFixed(1)}% en optimisation, ${(100*test.ret).toFixed(1)}% en validation.`;
+  if($("market"))$("market").innerHTML=`Actif <b>${$("symbol").value}</b> · ${$("candleInterval").value} · ${$("days").value} jours. ATR ≈ ${last.A.toFixed(2)} · RSI ${last.R.toFixed(1)} · volume ${last.v.toFixed(1)}× sa moyenne.`;
+  if($("history"))$("history").innerHTML=test.tr.slice(-12).reverse().map(t=>`${new Date(t.t).toLocaleDateString("fr-FR")} · <span class="${t.pnl>=0?"good":"bad"}">${t.pnl>=0?"+":""}${t.pnl.toFixed(2)} €</span>`).join("<br>")||"Aucun trade de validation.";
+ }catch(e){$("why").innerHTML='<span class="err">Erreur : '+e.message+'</span>'}
+ $("run").disabled=false;$("run").textContent="🧠 Analyser + tester";
+}
+function renderShortToggle(){
+  const b=$("shortToggle"), t=$("shortModeText");
+  if(!b || !t) return;
+  b.textContent=shortEnabled ? "📉 SHORT ON" : "📉 SHORT OFF";
+  t.textContent=shortEnabled
+    ? "📉 SHORT activés · les signaux VENTE peuvent ouvrir des positions SHORT."
+    : "📈 LONG uniquement · les signaux VENTE sont affichés mais aucun SHORT ne sera ouvert.";
+  b.className=shortEnabled ? "good" : "warn";
+}
+$("shortToggle").onclick=function(){
+  shortEnabled=!shortEnabled;
+  localStorage.setItem("cryptoBot_shortEnabled", String(shortEnabled));
+  renderShortToggle();
+  $("paperStatus").textContent=shortEnabled
+    ? "📉 SHORT activés · le paper trading peut prendre LONG + SHORT."
+    : "📈 SHORT désactivés · le paper trading reste LONG uniquement.";
+};
+renderShortToggle();
+
+if($("resetLearning"))$("resetLearning").onclick=resetAdaptive;
+renderAdaptive();
+$("auto").onclick=toggleAuto;
+$("reset").onclick=resetPaper;
+$("run").onclick=analyzeTop100;
+</script>
+
+<script id="v712-settings">
+(function(){
+  const candleEl=document.getElementById("candleInterval");
+  const analysisEl=document.getElementById("analysisInterval");
+  if(!candleEl || !analysisEl) return;
+
+  window.botSettings=window.botSettings||{};
+  const savedCandle=localStorage.getItem("cryptoBot_candleInterval");
+  const savedAnalysis=localStorage.getItem("cryptoBot_analysisInterval");
+  if(savedCandle && [...candleEl.options].some(o=>o.value===savedCandle)) candleEl.value=savedCandle;
+  if(savedAnalysis && [...analysisEl.options].some(o=>o.value===savedAnalysis)) analysisEl.value=savedAnalysis;
+
+  function save(){
+    localStorage.setItem("cryptoBot_candleInterval",candleEl.value);
+    localStorage.setItem("cryptoBot_analysisInterval",analysisEl.value);
+    window.botSettings.candleInterval=candleEl.value;
+    window.botSettings.analysisMinutes=Number(analysisEl.value);
+    window.botSettings.analysisMs=Number(analysisEl.value)*60*1000;
+    document.dispatchEvent(new CustomEvent("botSettingsChanged",{detail:window.botSettings}));
+  }
+  candleEl.addEventListener("change",function(){
+    save();
+    optimizationCache.clear();
+    if(typeof window.restartAutoAnalysis==="function") window.restartAutoAnalysis();
+  });
+  analysisEl.addEventListener("change",function(){
+    save();
+    optimizationCache.clear();
+    if(typeof window.restartAutoAnalysis==="function") window.restartAutoAnalysis();
+  });
+  save();
+})();
+</script>
+
+
+<script>
+/* V8.5 ADAPTIVE PRO: Real-market-condition paper LONG/SHORT engine.
+   No real orders, no API keys, no leverage above 1.5x. */
+(function(){
+  const MAX_LEVERAGE = 1.5;
+  const DEFAULT_LEVERAGE = 1.0;
+  window.V719_CONFIG = { paperOnly:true, maxLeverage:MAX_LEVERAGE, defaultLeverage:DEFAULT_LEVERAGE };
+  window.V719_tradePreview = function({side, entry, stop, target, equity, riskPct=0.5, leverage=1}){
+    leverage = Math.min(Math.max(Number(leverage)||1,1),MAX_LEVERAGE);
+    entry=Number(entry); stop=Number(stop); target=Number(target); equity=Number(equity); riskPct=Number(riskPct);
+    if(![entry,stop,target,equity,riskPct].every(Number.isFinite) || entry<=0 || equity<=0 || riskPct<=0) return null;
+    const valid = side==='LONG' ? (stop<entry && target>entry) : (stop>entry && target<entry);
+    if(!valid) return {valid:false, reason:'Paramètres incohérents'};
+    const riskCash=equity*riskPct/100;
+    const riskPerUnit=Math.abs(entry-stop);
+    const units=(riskCash/riskPerUnit)*leverage;
+    const notional=units*entry;
+    const move=Math.abs(target-entry);
+    const rr=move/riskPerUnit;
+    const maxNotional=equity*leverage;
+    return {valid:true, side, leverage, riskCash, units:Math.min(units,maxNotional/entry), notional:Math.min(notional,maxNotional), rr, maxNotional};
+  };
+})();
+</script>
+</body></html>
