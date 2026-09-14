@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#080c16">
+<title>🚀 Momentum Bot V1.0 — Paper Trading</title>
+<style>
+:root{--bg:#080c16;--card:#111827;--card2:#0d1422;--txt:#eef2ff;--muted:#9aa7bd;--line:#263248;--good:#35d07f;--bad:#ff5d73;--warn:#ffd166;--blue:#6574ff}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#080c16,#0d1320);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:14px;max-width:1050px;margin:auto}
+h1{font-size:29px;margin:5px 0}.sub{color:var(--muted);font-size:13px;margin-bottom:14px}.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:15px;margin:10px 0}.row{display:flex;gap:9px;flex-wrap:wrap}.stat{background:var(--card2);border-radius:13px;padding:11px;min-width:145px;flex:1}.label{font-size:11px;color:var(--muted)}.value{font-size:21px;font-weight:800;margin-top:3px}
+button,select,input{border:1px solid var(--line);background:#101827;color:var(--txt);border-radius:11px;padding:10px;font-size:14px}button{font-weight:800;cursor:pointer}.primary{background:var(--blue);border-color:var(--blue)}.good{color:var(--good)}.bad{color:var(--bad)}.warn{color:var(--warn)}.small{font-size:12px;color:var(--muted);line-height:1.55}.pill{display:inline-block;padding:5px 9px;border-radius:999px;background:#202b42;font-size:12px;margin:3px}.big{font-size:30px;font-weight:850}.bar{height:10px;background:#202b42;border-radius:10px;overflow:hidden;margin-top:7px}.bar i{display:block;height:100%;width:0;background:var(--blue)}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.position-card{background:var(--card2);border:1px solid var(--line);border-radius:13px;padding:11px}.position-head{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px}.position-title{font-size:14px;font-weight:800}.position-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.position-item{background:#101827;border-radius:9px;padding:7px}.position-label{font-size:9px;color:var(--muted);text-transform:uppercase}.position-value{font-size:12px;font-weight:700;margin-top:2px}
+.scanner-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);font-size:12px}.scanner-main{min-width:0}.scanner-meta{text-align:right;white-space:nowrap}.log{max-height:220px;overflow:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:1.55;background:#090e18;border-radius:12px;padding:10px}
+@media(min-width:750px){.position-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+</style>
+</head>
+<body>
+<h1>🚀 Momentum Bot V1.0</h1>
+<div class="sub">PAPER TRADING · Binance Spot · 251 marchés max · LONG uniquement · sans levier · scan automatique toutes les 5 minutes</div>
+
+<div class="card">
+  <div class="row">
+    <select id="scanInterval"><option value="1">1 minute</option><option value="3">3 minutes</option><option value="5" selected>5 minutes</option></select>
+    <select id="maxPositions"><option value="3">3 positions</option><option value="5" selected>5 positions</option><option value="8">8 positions</option></select>
+    <button id="run" class="primary">🧠 Scanner Binance maintenant</button>
+    <button id="reset">♻️ Reset PAPER</button>
+  </div>
+  <div id="status" class="small" style="margin-top:10px">🟡 Initialisation…</div>
+</div>
+
+<div class="card">
+  <h2>📊 Portefeuille PAPER</h2>
+  <div class="grid">
+    <div class="stat"><div class="label">CAPITAL INITIAL</div><div class="value">10 000,00 €</div></div>
+    <div class="stat"><div class="label">CASH DISPONIBLE</div><div id="cash" class="value">10 000,00 €</div></div>
+    <div class="stat"><div class="label">ÉQUITÉ</div><div id="equity" class="value">10 000,00 €</div></div>
+    <div class="stat"><div class="label">P/L TOTAL</div><div id="pnl" class="value">0,00 €</div></div>
+    <div class="stat"><div class="label">P/L RÉALISÉ</div><div id="realized" class="value">0,00 €</div></div>
+    <div class="stat"><div class="label">P/L LATENT</div><div id="unrealized" class="value">0,00 €</div></div>
+    <div class="stat"><div class="label">POSITIONS</div><div id="posCount" class="value">0 / 5</div></div>
+    <div class="stat"><div class="label">TAUX DE RÉUSSITE</div><div id="winrate" class="value">—</div></div>
+  </div>
+  <div class="small" style="margin-top:10px">Risque cible : 0,5% du cash par trade · capital max : 5% par position · frais simulés 0,10% par côté · slippage 0,05%.</div>
+</div>
+
+<div class="card">
+  <h2>🚀 Positions ouvertes</h2>
+  <div id="positions"><div class="small">Aucune position ouverte.</div></div>
+</div>
+
+<div class="card">
+  <h2>🏆 Meilleures opportunités</h2>
+  <div id="candidates"><div class="small">Le scanner va classer les marchés.</div></div>
+</div>
+
+<div class="card">
+  <h2>📡 Statistiques scanner</h2>
+  <div class="grid">
+    <div class="stat"><div class="label">SCANS</div><div id="scans" class="value">0</div></div>
+    <div class="stat"><div class="label">MARCHÉS ANALYSÉS</div><div id="markets" class="value">0</div></div>
+    <div class="stat"><div class="label">REQUÊTES</div><div id="requests" class="value">0</div></div>
+    <div class="stat"><div class="label">ERREURS</div><div id="errors" class="value">0</div></div>
+    <div class="stat"><div class="label">DERNIER SCAN</div><div id="lastScan" class="value">—</div></div>
+    <div class="stat"><div class="label">PROCHAIN SCAN</div><div id="nextScan" class="value">—</div></div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>🧪 Journal des décisions</h2>
+  <div id="log" class="log">Démarrage du bot…</div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const INITIAL=10000, FEE=.001, SLIP=.0005, RISK=.005, MAX_CAP=.05, MAX_DAILY_LOSS=.02;
+const UNIVERSE_MAX=251, CANDLE_LIMIT=120, BATCH=12;
+let state=loadState(), universe=[], rows=[], busy=false, timer=null, nextDue=0;
+let stats=state.stats||{scans:0,markets:0,requests:0,errors:0,lastMs:0};
+let logs=state.logs||[];
+
+function money(x){return Number(x||0).toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2})+" €"}
+function price(x){x=Number(x)||0;let d=x>=1?3:x>=.1?5:x>=.01?6:x>=.001?7:9;return x.toLocaleString("fr-FR",{minimumFractionDigits:d,maximumFractionDigits:d})}
+function avg(a){return a.length?a.reduce((x,y)=>x+y,0)/a.length:0}
+function ema(a,p){let k=2/(p+1),e=a[0],o=[];for(let i=0;i<a.length;i++){e=i?a[i]*k+e*(1-k):a[i];o.push(e)}return o}
+function atr(c,p=14){let tr=[];for(let i=0;i<c.length;i++)tr.push(i?Math.max(c[i].h-c[i].l,Math.abs(c[i].h-c[i-1].c),Math.abs(c[i].l-c[i-1].c)):c[i].h-c[i].l);let a=avg(tr.slice(-p));return a}
+function rsi(a,p=14){if(a.length<p+2)return 50;let g=0,l=0;for(let i=a.length-p;i<a.length;i++){let d=a[i]-a[i-1];g+=Math.max(d,0);l+=Math.max(-d,0)}if(l===0)return 100;let rs=(g/p)/(l/p);return 100-100/(1+rs)}
+function pct(a,b){return b?((a-b)/b)*100:0}
+function log(s){logs.unshift(new Date().toLocaleTimeString("fr-FR")+" · "+s);logs=logs.slice(0,80);$("log").innerHTML=logs.map(x=>"<div>"+x.replace(/[<>]/g,"")+"</div>").join("");persist()}
+function persist(){state.stats=stats;state.logs=logs;try{localStorage.setItem("momentumBotV1",JSON.stringify(state))}catch(e){}}
+function freshState(){return {cash:INITIAL,positions:{},realized:0,trades:0,wins:0,losses:0,peak:INITIAL,stats:{scans:0,markets:0,requests:0,errors:0,lastMs:0},logs:[]}}
+function loadState(){try{let x=JSON.parse(localStorage.getItem("momentumBotV1")||"null");return x&&x.cash!=null?x:freshState()}catch(e){return freshState()}}
+function reset(){state=freshState();stats=state.stats;logs=[];try{localStorage.removeItem("momentumBotV1")}catch(e){};log("♻️ PAPER réinitialisé à 10 000 €. Aucun ordre réel.");render()}
+
+async function fetchT(url,ms=15000){stats.requests++;let c=new AbortController(),t=setTimeout(()=>c.abort(),ms);try{let r=await fetch(url,{signal:c.signal,cache:"no-store"});if(!r.ok)throw Error("Binance HTTP "+r.status);return r}finally{clearTimeout(t)}}
+
+async function getUniverse(){
+  let [a,b]=await Promise.all([
+    fetchT("https://api.binance.com/api/v3/exchangeInfo"),
+    fetchT("https://api.binance.com/api/v3/ticker/24hr")
+  ]);
+  let info=await a.json(),tick=await b.json(); if(!Array.isArray(info.symbols)||!Array.isArray(tick))throw Error("Univers Binance indisponible");
+  let tm=new Map(tick.map(x=>[x.symbol,x])), stable=/^(USDC|FDUSD|TUSD|USDP|DAI|USDE|USDS|USDT)$/;
+  return info.symbols.filter(x=>x.status==="TRADING"&&x.isSpotTradingAllowed===true&&x.quoteAsset==="USDT"&&!stable.test(x.baseAsset))
+    .map(x=>{let t=tm.get(x.symbol)||{};let qv=Number(t.quoteVolume)||0,cnt=Number(t.count)||0,bid=Number(t.bidPrice)||0,ask=Number(t.askPrice)||0,mid=(bid+ask)/2,sp=mid?((ask-bid)/mid)*100:99;return {symbol:x.symbol,volume:qv,trades:cnt,spread:sp,change:Number(t.priceChangePercent)||0}})
+    .filter(x=>x.volume>=750000&&x.trades>=150&&x.spread<=1.5)
+    .sort((a,b)=>b.volume-a.volume).slice(0,UNIVERSE_MAX).map(x=>x.symbol)
+}
+
+async function loadCandles(s){
+  let r=await fetchT("https://api.binance.com/api/v3/klines?symbol="+encodeURIComponent(s)+"&interval=15m&limit="+CANDLE_LIMIT);
+  let k=await r.json();if(!Array.isArray(k)||k.length<70)throw Error("Bougies indisponibles "+s);
+  return k.slice(0,-1).map(x=>({t:+x[0],h:+x[2],l:+x[3],c:+x[4],v:+x[5]}))
+}
+
+function momentum(c,ticker){
+  let cl=c.map(x=>x.c),vol=c.map(x=>x.v),p=cl.at(-1),e9=ema(cl,9),e21=ema(cl,21),e50=ema(cl,50),A=atr(c),R=rsi(cl),v=vol.at(-1)/Math.max(avg(vol.slice(-20)),1),roc3=p/cl.at(-4)-1,roc12=p/cl.at(-13)-1;
+  let hi20=Math.max(...c.slice(-21,-1).map(x=>x.h)), breakout=p>=hi20*.998;
+  let extension=p?((p-e21.at(-1))/p)*100:99;
+  let s=0,f=[];
+  const add=(n,val,pts)=>{s+=pts;f.push([n,val,pts])};
+  if(e9.at(-1)>e21.at(-1))add("Tendance","EMA9 > EMA21",18);else add("Tendance","EMA9 ≤ EMA21",-12);
+  if(e21.at(-1)>e50.at(-1))add("Structure","EMA21 > EMA50",15);else add("Structure","EMA21 ≤ EMA50",-12);
+  if(roc3>0.003)add("Accélération",(roc3*100).toFixed(2)+"% / 3 bougies",14);else if(roc3>0)add("Accélération",(roc3*100).toFixed(2)+"%",6);else add("Accélération","négative",-10);
+  if(roc12>0.01)add("Momentum 3h",(roc12*100).toFixed(2)+"%",12);else if(roc12>0)add("Momentum 3h",(roc12*100).toFixed(2)+"%",5);else add("Momentum 3h","négatif",-10);
+  if(v>=1.5)add("Volume",v.toFixed(1)+"× moyenne",12);else if(v>=1.15)add("Volume",v.toFixed(1)+"×",6);else add("Volume",v.toFixed(1)+"×",-3);
+  if(R>=55&&R<=70)add("RSI",R.toFixed(1)+" favorable",12);else if(R>70)add("RSI",R.toFixed(1)+" trop chaud",-7);else if(R<45)add("RSI",R.toFixed(1)+" faible",-7);else add("RSI",R.toFixed(1),2);
+  if(breakout)add("Cassure","près du +haut 20 bougies",10);else add("Cassure","pas de cassure",0);
+  if(extension>4)add("Extension",extension.toFixed(1)+"% au-dessus EMA21",-12);
+  let s2=Math.max(0,Math.min(100,Math.round(s)));
+  return {s:s2,p,A,R,v,roc3,roc12,e9:e9.at(-1),e21:e21.at(-1),e50:e50.at(-1),hi20,breakout,extension,f,change24:Number(ticker?.change)||0,volume24:Number(ticker?.volume)||0}
+}
+
+async function analyzeOne(symbol){
+  let c=await loadCandles(symbol);
+  let tick=universeTicker.get(symbol)||{};
+  return {symbol,c,last:momentum(c,tick)}
+}
+let universeTicker=new Map();
+
+async function scan(){
+  if(busy)return;
+  busy=true;$("run").disabled=true;$("run").textContent="⏳ Scan en cours…";
+  let start=performance.now();
+  try{
+    let [u, tr]=await Promise.all([
+      getUniverse(),
+      fetchT("https://api.binance.com/api/v3/ticker/24hr")
+    ]);
+    let ta=await tr.json();universeTicker=new Map(Array.isArray(ta)?ta.map(x=>[x.symbol,{change:Number(x.priceChangePercent)||0,volume:Number(x.quoteVolume)||0}]):[]);
+    universe=u;rows=[];
+    $("status").textContent="🔎 Analyse de "+universe.length+" marchés Binance…";
+    for(let i=0;i<universe.length;i+=BATCH){
+      let batch=universe.slice(i,i+BATCH);
+      let rr=await Promise.all(batch.map(async s=>{try{return await analyzeOne(s)}catch(e){stats.errors++;return null}}));
+      rows.push(...rr.filter(Boolean));
+      $("status").textContent="🔎 "+rows.length+"/"+universe.length+" marchés analysés…";
+      renderCandidates(rows);
+    }
+    rows.sort((a,b)=>b.last.s-a.last.s);
+    stats.scans++;stats.markets=rows.length;stats.lastMs=performance.now()-start;
+    log("🔎 Scan #"+stats.scans+" terminé · "+rows.length+" marchés · "+(stats.lastMs/1000).toFixed(1)+" s · "+stats.errors+" erreurs.");
+    manageEntries(rows);
+    renderCandidates(rows);
+    render();
+  }catch(e){stats.errors++;$("status").textContent="🔴 "+e.message;log("⚠️ "+e.message)}
+  finally{
+    busy=false;$("run").disabled=false;$("run").textContent="🧠 Scanner Binance maintenant";
+    persist();
+  }
+}
+
+function eligible(r){
+  if(!r||r.last.s<82)return false;
+  if(r.last.R>72||r.last.R<50)return false;
+  if(r.last.extension>4)return false;
+  if(r.last.e9<=r.last.e21||r.last.e21<=r.last.e50)return false;
+  if(r.last.roc3<=0||r.last.roc12<=0)return false;
+  return true;
+}
+
+function manageEntries(rs){
+  let max=+$("maxPositions").value;
+  let open=Object.keys(state.positions).length;
+  if(open>=max)return;
+  let dailyStart=state.dailyStart||Date.now(), day=24*60*60*1000;
+  if(Date.now()-dailyStart>day){state.dailyStart=Date.now();state.dailyLoss=0}
+  if((state.dailyLoss||0)>=INITIAL*MAX_DAILY_LOSS){log("🛑 Limite de perte journalière atteinte : aucune nouvelle entrée.");return}
+  for(let r of rs.sort((a,b)=>b.last.s-a.last.s)){
+    if(open>=max)break;
+    if(state.positions[r.symbol]||!eligible(r))continue;
+    let p=r.last.p, A=r.last.A, stop=p-A*1.6, tp=p+A*2.6;
+    let riskBudget=state.cash*RISK, riskUnit=Math.max(p-stop,p*.002);
+    let qty=Math.min(riskBudget/riskUnit,(state.cash*MAX_CAP)/p);
+    let fill=p*(1+SLIP),notional=qty*fill,fee=notional*FEE;
+    if(qty<=0||notional+fee>state.cash)continue;
+    state.cash-=notional+fee;
+    state.positions[r.symbol]={symbol:r.symbol,entry:fill,qty,notional,fee,stop:fill-A*1.6,tp:fill+A*2.6,high:fill,opened:Date.now(),score:r.last.s,entrySnapshot:{...r.last}};
+    state.trades++;open++;
+    log("🟢 ENTRÉE "+r.symbol.replace("USDT","")+" · score "+r.last.s+"/100 · "+money(notional)+" · stop "+price(stop)+" · TP "+price(tp));
+  }
+  persist();
+}
+
+function livePrice(symbol){return Number(state.lastPrices?.[symbol]||0)}
+function checkPositions(){
+  state.lastPrices=state.lastPrices||{};
+  for(let [s,p] of Object.entries(state.positions)){
+    let px=livePrice(s);if(!px)continue;
+    p.high=Math.max(p.high||p.entry,px);
+    // trailing léger après +1 ATR implicite : on remonte le stop à break-even net.
+    if(px>=p.entry+(p.tp-p.entry)*.38){
+      let be=p.entry*(1+FEE*2+SLIP);
+      p.stop=Math.max(p.stop,be);
+    }
+    let reason=null,ex=px;
+    if(px<=p.stop)reason="STOP";else if(px>=p.tp)reason="TAKE PROFIT";
+    if(reason)closePosition(s,ex,reason);
+  }
+  render();
+}
+
+function closePosition(s,px,reason){
+  let p=state.positions[s];if(!p)return;
+  let fill=px*(1-SLIP),gross=p.qty*fill,fee=gross*FEE,pnl=gross-fee-p.notional-p.fee;
+  state.cash+=gross-fee;state.realized+=pnl;
+  if(pnl>0)state.wins++;else state.losses++;
+  if(pnl<0)state.dailyLoss=(state.dailyLoss||0)+Math.abs(pnl);
+  delete state.positions[s];
+  log((pnl>=0?"🟢":"🔴")+" SORTIE "+s.replace("USDT","")+" · "+reason+" · "+(pnl>=0?"+":"")+money(pnl)+" net.");
+  persist();
+}
+
+function equity(){
+  let e=state.cash,u=0;
+  for(let [s,p] of Object.entries(state.positions)){
+    let px=livePrice(s)||p.entry,gross=p.qty*px,fee=gross*FEE;
+    u+=gross-fee-p.notional-p.fee;e+=gross-fee;
+  }
+  return {e,u,pnl:e-INITIAL}
+}
+
+function renderCandidates(rs){
+  let top=(rs||[]).slice().sort((a,b)=>b.last.s-a.last.s).slice(0,20);
+  $("candidates").innerHTML=top.length?top.map((r,i)=>{
+    let ok=eligible(r),l=r.last;
+    return `<div class="scanner-row"><div class="scanner-main"><b>${i+1}. ${r.symbol.replace("USDT","")}</b> · <span class="${ok?"good":"warn"}">${ok?"ENTRÉE POSSIBLE":"SURVEILLER"}</span> · <b>${l.s}/100</b><div class="small">${l.f.slice(0,5).map(x=>x[0]+": "+x[1]).join(" · ")}</div></div><div class="scanner-meta"><span class="${l.change24>=0?"good":"bad"}">${l.change24>=0?"+":""}${l.change24.toFixed(2)}% 24h</span><br>RSI ${l.R.toFixed(1)}</div></div>`
+  }).join(""):"<div class='small'>Aucun résultat.</div>";
+}
+
+function render(){
+  let x=equity(),un=x.u,p=x.pnl;
+  $("cash").textContent=money(state.cash);$("equity").textContent=money(x.e);$("pnl").textContent=(p>=0?"+":"")+money(p);
+  $("realized").textContent=(state.realized>=0?"+":"")+money(state.realized);$("unrealized").textContent=(un>=0?"+":"")+money(un);
+  ["pnl","realized","unrealized"].forEach(id=>$(id).className="value "+(Number(id==="pnl"?p:id==="realized"?state.realized:un)>=0?"good":"bad"));
+  let n=Object.keys(state.positions).length;$("posCount").textContent=n+" / "+$("maxPositions").value;
+  let total=state.wins+state.losses;$("winrate").textContent=total?Math.round(state.wins/total*100)+"%":"—";
+  $("scans").textContent=stats.scans;$("markets").textContent=stats.markets;$("requests").textContent=stats.requests;$("errors").textContent=stats.errors;
+  $("lastScan").textContent=stats.lastMs?(stats.lastMs/1000).toFixed(1)+" s":"—";
+  let sec=Math.max(0,Math.round((nextDue-Date.now())/1000));$("nextScan").textContent=sec?Math.floor(sec/60)+"m "+(sec%60)+"s":"maintenant";
+  let arr=Object.values(state.positions);
+  $("positions").innerHTML=arr.length?arr.map(p=>{
+    let px=livePrice(p.symbol)||p.entry,gross=p.qty*px,fee=gross*FEE,unreal=gross-fee-p.notional-p.fee;
+    return `<div class="position-card"><div class="position-head"><div class="position-title">🚀 ${p.symbol.replace("USDT","")} · score ${p.score}/100</div><div class="${unreal>=0?"good":"bad"}">${unreal>=0?"+":""}${money(unreal)}</div></div><div class="position-grid"><div class="position-item"><div class="position-label">Entrée</div><div class="position-value">${price(p.entry)} €</div></div><div class="position-item"><div class="position-label">Actuel</div><div class="position-value">${price(px)} €</div></div><div class="position-item"><div class="position-label">Stop</div><div class="position-value bad">${price(p.stop)} €</div></div><div class="position-item"><div class="position-label">Take profit</div><div class="position-value good">${price(p.tp)} €</div></div><div class="position-item"><div class="position-label">Notionnel</div><div class="position-value">${money(p.notional)}</div></div><div class="position-item"><div class="position-label">Quantité</div><div class="position-value">${p.qty.toLocaleString("fr-FR",{maximumFractionDigits:8})}</div></div><div class="position-item"><div class="position-label">Ouverte</div><div class="position-value">${new Date(p.opened).toLocaleTimeString("fr-FR",{hour12:false})}</div></div><div class="position-item"><div class="position-label">État</div><div class="position-value good">LIVE</div></div></div></div>`
+  }).join(""):"<div class='small'>Aucune position ouverte.</div>";
+}
+
+function schedule(){
+  if(timer)clearInterval(timer);
+  let m=Number($("scanInterval").value)||5;
+  nextDue=Date.now()+m*60000;
+  timer=setInterval(()=>{nextDue=Date.now()+m*60000;scan()},m*60000);
+}
+$("scanInterval").addEventListener("change",()=>{schedule();render()});
+$("maxPositions").addEventListener("change",render);
+$("run").onclick=scan;$("reset").onclick=reset;
+
+let ws=null,wsKey="";
+function startWS(){
+  let syms=Object.keys(state.positions).map(x=>x.toLowerCase()).sort(),key=syms.join(",");
+  if(!syms.length){if(ws){try{ws.close()}catch(e){}ws=null}wsKey="";return}
+  if(ws&&(ws.readyState===1||ws.readyState===0)&&key===wsKey)return;
+  if(ws)try{ws.close()}catch(e){}
+  wsKey=key;
+  ws=new WebSocket("wss://data-stream.binance.vision/stream?streams="+syms.map(s=>s+"@trade").join("/"));
+  ws.onmessage=e=>{try{let d=JSON.parse(e.data).data||{},s=String(d.s||"").toUpperCase(),p=Number(d.p);if(s&&p>0){state.lastPrices=state.lastPrices||{};state.lastPrices[s]=p;checkPositions()}}catch(e){}};
+  ws.onclose=()=>{ws=null;setTimeout(startWS,2000)};
+}
+setInterval(startWS,1000);
+setInterval(()=>{render();persist()},2000);
+window.addEventListener("error",e=>{try{$("status").textContent="🔴 Erreur JavaScript : "+(e.message||"inconnue");log("❌ Erreur JavaScript : "+(e.message||"inconnue"))}catch(_){}});
+window.addEventListener("unhandledrejection",e=>{try{$("status").textContent="🔴 Erreur : "+(e.reason?.message||e.reason||"promesse rejetée");log("❌ Erreur : "+(e.reason?.message||e.reason||"promesse rejetée"))}catch(_){}});
+
+renderCandidates([]);render();log("🚀 Momentum Bot V1.0 démarré · PAPER uniquement.");
+schedule();
+scan();
+</script>
+</body>
+</html>
